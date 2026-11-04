@@ -2,7 +2,7 @@
 
 ## Task 1: Project Scaffolding & Environment Setup
 - **Date**: 4 Nov 2026
-- **Status**: Completed (Scaffolding & Architecture)
+- **Status**: Completed & Verified
 
 ### 1. What is Done
 - **Next.js (App Router) + TypeScript Strict Setup**:
@@ -32,11 +32,18 @@
   - `.eslintrc.json` enforcing Four Rooms import isolation (Propose cannot import Execute; Execute accepts only verified mandates).
   - `.gitignore` configured to ignore `.env*` files except `.env.example`.
   - `.env.example` created matching PRD Appendix A without real credentials.
+- **Verification Completed**:
+  - `npm run lint` -> Passed (0 errors, 0 warnings).
+  - `npm run typecheck` -> Passed (TypeScript strict check clean).
+  - `npm test` -> Passed (2 tests passed).
+  - `npm run build` -> Passed (production optimized build generated).
 
 ### 2. What is Next
-- Complete local package installation in user terminal (`npm install --legacy-peer-deps`).
-- Verify `npm run lint`, `npm run typecheck`, and `npm test` execute clean and green.
-- Proceed to Task 2: Domain core (Money arithmetic, canonical RFC 8785 JSON hashing, and pure deterministic policy engine with unit tests).
+- Task 2: Domain core
+  - Money arithmetic library (`src/lib/money.ts` — integer cents, formatting, validation).
+  - Canonical RFC 8785 JSON proposal hashing (`src/lib/canonical.ts`).
+  - Deterministic pure policy engine (`src/rooms/authorize/engine.ts`).
+  - Comprehensive unit test suite (60+ tests for boundary limits, kill switch, allowlists, and daily caps).
 
 ### 3. Known Issues & Blockers
-- **Corrupted local node_modules in Windows environment**: Due to an earlier network timeout/proxy reset during installation, some downloaded binaries (e.g. `esbuild.exe` and `typescript/lib/tsc.js`) were truncated, and the `node_modules/.bin` directory was not generated. A fresh `npm install` from the user terminal resolves this.
+- None. Clean baseline established and synchronized with remote repository.
