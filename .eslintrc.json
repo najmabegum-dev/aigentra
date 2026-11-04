@@ -1,0 +1,40 @@
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["**/rooms/execute", "@/rooms/execute"],
+            "message": "AGENTS.md Violation: Execute room cannot be imported directly. It accepts only a VerifiedMandate."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/rooms/execute/**"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": ["src/rooms/propose/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/rooms/execute/**", "@/rooms/execute/**", "**/rooms/execute", "@/rooms/execute"],
+                "message": "AGENTS.md Violation: Propose room is forbidden from importing from the Execute room."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
