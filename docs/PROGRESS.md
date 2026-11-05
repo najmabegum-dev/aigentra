@@ -136,7 +136,56 @@
   - `tests/integration/workspaces-seed.test.ts` (1 test)
 
 ### 3. What is Next
-- Task 9: Authority Mandate issuing and cryptographic verification (`src/rooms/authorize/mandates.ts`) using EdDSA / Ed25519 JWS (`jose`), with atomic consumption in database transactions.
+- Task 9: AI Propose Intent Parser, Vercel AI SDK Gemini Integration, Replay Mode, and Rate Caps.
+
+---
+
+## Task 9: AI Propose Intent Parser, Gemini Flash Integration, Replay Mode & Rate Caps (PRD §9)
+- **Date**: 6 Nov 2026
+- **Status**: Completed & Verified
+
+### 1. Decisions and Rationale
+- **Gemini Model Choice (`gemini-1.5-flash`)**:
+  - *Decision*: Verified official Google documentation and selected `gemini-1.5-flash` as the production default (overridable via `GEMINI_MODEL_ID` environment variable).
+  - *Reason*: Meets the sub-second latency and cost requirements for fast structured output generation while providing high fidelity for extracting merchant intent, budget constraints, and purchase goals.
+- **Fail-Safe Replay Mode (`src/rooms/propose/replay.ts`)**:
+  - *Decision*: Engineered robust Replay mode providing pre-recorded structured responses for key demo interactions (`keyboard_demo` and `headset_demo`).
+  - *Trigger Conditions*: Missing or invalid `GEMINI_API_KEY`, quota exhaustion, per-workspace rate cap breach, or upstream provider network failure.
+  - *UI Distinction*: Every replay response includes `mode: "replay"` and `replay_label: "Replay"` so that it is transparently communicated in the user interface (PRD §9.3).
+- **Strict Budget & Currency Invariant (PRD §9.1)**:
+  - *Decision*: The intent parser will never guess or hallucinate missing budgets or ambiguous currencies.
+  - *Behavior*: If the user does not specify a budget, or provides an ambiguous currency/non-USD amount, the parser returns `clarifying_question` prompting the user rather than guessing. Prompt injection attempts are flagged and safely rejected.
+- **Per-Workspace AI Rate Caps (`src/rooms/propose/caps.ts`)**:
+  - *Decision*: Implemented rate limit controls (20 requests/hour, 50 requests/day per workspace) backed by PostgreSQL/PGlite `ai_usage` table and `workspaces.ai_calls_used` counter. Exceeding caps triggers transparent degradation to Replay mode.
+- **Golden Intent Dataset & Verification Script**:
+  - *Decision*: Created `tests/fixtures/intents.json` with 20 diverse real-world and adversarial intent scenarios. Created `scripts/verify-golden-intents.ts` (`npm run verify:intents`) verifying strict schema adherence for all 20 fixtures.
+- **Strict Golden Rule 1 Boundary Enforcement**:
+  - *Decision*: Propose room modules (`src/rooms/propose/ai.ts`) are completely isolated from PayPal execution credentials and `src/rooms/execute`. Verified via automated boundary test `tests/unit/intent-parser.test.ts`.
+
+### 2. Verification Report
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors).
+- `npm run typecheck` -> Passed (0 errors).
+- `npm run verify:intents` -> Passed (**20/20 golden intents verified** against strict Zod schema).
+- `npm run build` -> Passed (Production build compiled and optimized, all routes dynamic/static rendered).
+- `npm test` -> Passed (**175 / 175 tests green** across 15 test files):
+  - `tests/unit/intent-parser.test.ts` (8 tests)
+  - `tests/integration/ai-caps.test.ts` (2 tests)
+  - `tests/unit/engine.test.ts` (72 tests)
+  - `tests/unit/stateMachine.test.ts` (24 tests)
+  - `tests/unit/money.test.ts` (15 tests)
+  - `tests/unit/canonical.test.ts` (10 tests)
+  - `tests/unit/env.test.ts` (9 tests)
+  - `tests/unit/session.test.ts` (7 tests)
+  - `tests/unit/policy-schema.test.ts` (7 tests)
+  - `tests/integration/db-schema.test.ts` (7 tests)
+  - `tests/integration/policy-studio.test.ts` (5 tests)
+  - `tests/integration/workspace-isolation.test.ts` (4 tests)
+  - `tests/property/engine.property.test.ts` (2 tests)
+  - `tests/unit/setup.test.ts` (2 tests)
+  - `tests/integration/workspaces-seed.test.ts` (1 test)
+
+### 3. What is Next
+- Task 10: Authority Mandate issuing and cryptographic verification (`src/rooms/authorize/mandates.ts`) using EdDSA / Ed25519 JWS (`jose`), with atomic consumption in database transactions.
 
 ### 4. Known Issues & Blockers
 - None.
