@@ -40,32 +40,45 @@
 - **Date**: 5 Nov 2026
 - **Status**: Completed & Verified
 
+### What Was Done
+- Safe integer cents money arithmetic library (`src/lib/money.ts`).
+- RFC 8785 canonical JSON proposal hashing module (`src/lib/canonical.ts`).
+- Tests verifying key order invariance, sku sorting, untrusted data immunity, and tamper sensitivity (`tests/unit/money.test.ts`, `tests/unit/canonical.test.ts`).
+
+---
+
+## Task 5: Deterministic Policy Engine (Pure Function `evaluate`)
+- **Date**: 5 Nov 2026
+- **Status**: Completed & Verified
+
 ### 1. What is Done
-- **Money Arithmetic (`src/lib/money.ts`)**:
-  - Enforces Golden Rule 4: Money is integer cents plus ISO currency; zero floating-point arithmetic.
-  - Safe operations: `assertIntegerCents()`, `safeAddCents()`, `safeMultiplyCents()`.
-  - PayPal boundary formatting: `centsToPayPalString()` converting integer cents to `"84.99"`.
-  - String parsing: `parseStringToCents()` converting strings into integer cents without float drift.
-  - Currency validation: `validateCurrency()` enforcing USD in sandbox.
-- **RFC 8785 Canonical JSON & Proposal Hashing (`src/lib/canonical.ts`)**:
-  - Implements PRD §6.4:
-    `proposal_hash = sha256(RFC 8785 canonical JSON of { workspace_id, items[{ sku, merchant_domain, unit_price_cents, quantity }] sorted by sku, currency, total_cents, shipping_cents, tax_cents, checkout_terms_version })`.
-  - Strips untrusted and non-material data (product display names, titles, descriptions, image URLs, tracking IDs).
-  - Normalizes and sorts line items lexicographically by `sku`.
-  - Exports `computeProposalHash()` and UI helper `shortProposalHash()` (first 8 characters).
-- **Automated Unit Tests**:
-  - `tests/unit/money.test.ts`: 15 tests covering integer validation, safe addition, multiplication, formatting, parsing, and float rejection.
-  - `tests/unit/canonical.test.ts`: 10 tests proving key order invariance, sku sorting invariance, untrusted field immunity, and hash sensitivity to price, quantity, merchant, total, or currency alterations.
+- **Pure Function Policy Engine (`src/rooms/authorize/engine.ts`)**:
+  - Implemented `evaluate(proposal, policy, spendState, now)` strictly following Golden Rule 3 (no network, no database, no clock reads).
+  - Evaluates every rule in order of PRD §6.2:
+    1. Schema & Data Integrity (currency USD, quantity bounds 1-10, SKU presence, server price equality, recomputed total equality, price freshness).
+    2. Kill switch & Policy lifecycle (kill switch on, policy missing, DRAFT, PAUSED, REVOKED, validity window).
+    3. Merchant rules (`ALLOWLIST_ONLY`, `DENYLIST`, `ANY_WITH_APPROVAL`).
+    4. Categories (blocked categories -> DENY, missing/unknown -> REQUIRE_APPROVAL).
+    5. Per-item max cap & Cart max cap.
+    6. Daily cap (captured + reserved + this cart).
+    7. Velocity window (duplicate purchase heuristic).
+    8. Approval threshold (auto-allow vs. require approval).
+    9. System fail-closed safety (returns `DENY` with `EVAL_ERROR` without throwing).
+  - Decision Precedence: `DENY` beats `REQUIRE_APPROVAL` beats `ALLOW`.
+  - Itemized `rule_results` array returned for the explainable decision panel.
+- **Types & Reason Codes (`src/rooms/authorize/types.ts`)**:
+  - Full TypeScript definitions for `Decision`, `ReasonCode`, `PolicyRuleDefinition`, `ProposalToEvaluate`, `SpendState`, `RuleResult`, `EvaluationResult`.
+- **Comprehensive Unit Tests (`tests/unit/engine.test.ts`)**:
+  - 72 automated tests covering all 17 rule groups, limits (just below, equal, just above), Asia/Kolkata midnight daily cap reset, velocity windows, stale prices, kill switches, and pure function immutability.
 - **Verification Completed**:
   - `npm run lint` -> Passed (0 errors, 0 warnings).
   - `npm run typecheck` -> Passed (clean compilation).
-  - `npm test` -> Passed (43/43 tests green across all 5 test suites).
+  - `npm test` -> Passed (115/115 tests green across all 6 test suites).
+  - `npm run build` -> Passed (clean production build).
 
 ### 2. What is Next
-- Task 5: Deterministic Policy Engine
-  - `src/rooms/authorize/engine.ts`: Pure function `evaluate(proposal, policy, spendState, now)`.
-  - Evaluation rules: schema integrity, kill switch, merchant allow/denylist, blocked/unknown categories, per-item cap, cart cap, daily cap, velocity window, threshold approval.
-  - 60+ unit and property tests.
+- Task 6: Authority Mandate issuing and cryptographic verification (`src/rooms/authorize/mandates.ts`) using EdDSA / Ed25519 JWS (`jose`).
+- Single-use atomic consumption statement in database (`UPDATE mandates SET used_at = now() WHERE jti = $1 AND used_at IS NULL AND exp > now() RETURNING *`).
 
 ### 3. Known Issues & Blockers
 - None.
