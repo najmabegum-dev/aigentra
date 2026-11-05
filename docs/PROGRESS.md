@@ -4,46 +4,47 @@
 - **Date**: 4 Nov 2026
 - **Status**: Completed & Verified
 
+### What Was Done
+- Next.js (App Router) + TypeScript Strict setup with Tailwind, shadcn/ui configuration, Vitest, and ESLint.
+- Four Rooms folder structure with `.gitkeep` (`src/rooms/{propose, authorize, execute, verify}`).
+- Persistent SANDBOX banner and baseline landing view.
+
+---
+
+## Task 2: Environment Validation & Health Diagnostics
+- **Date**: 5 Nov 2026
+- **Status**: Completed & Verified
+
 ### 1. What is Done
-- **Next.js (App Router) + TypeScript Strict Setup**:
-  - `package.json` configured with core dependencies (`next`, `react`, `react-dom`, `zod`, `clsx`, `tailwind-merge`, `class-variance-authority`, `lucide-react`) and dev dependencies (`typescript`, `tailwindcss`, `postcss`, `autoprefixer`, `eslint`, `eslint-config-next`, `vitest`).
-  - Added npm scripts: `dev`, `build`, `start`, `lint`, `typecheck`, `test`.
-  - Configured `tsconfig.json` with strict type-checking and `@/*` path mapping to `./src/*`.
-  - Configured Tailwind CSS (`tailwind.config.ts`, `postcss.config.mjs`) embedding PRD §10.1 design tokens and status colors.
-  - Initialized shadcn/ui configuration (`components.json`) pointing to `@/ui`.
-- **Four Rooms Architecture & Directory Structure (PRD §5.4)**:
-  - Created Four Rooms folders with `.gitkeep`:
-    - `src/rooms/propose/` (LLM, Channel3 discovery)
-    - `src/rooms/authorize/` (pure policy engine, mandate generation)
-    - `src/rooms/execute/` (PayPal sandbox execution gated by VerifiedMandate)
-    - `src/rooms/verify/` (ledger, webhooks, hash chain verification)
-  - Created supporting directories with `.gitkeep`:
-    - `drizzle/`
-    - `src/lib/` (with `src/lib/utils.ts` shadcn helper)
-    - `src/ui/`
-    - `src/studio/`
-    - `tests/unit/`, `tests/property/`, `tests/integration/`, `tests/e2e/`, `tests/fixtures/`
-- **Application & Testing Baseline**:
-  - `src/app/layout.tsx` with persistent Sandbox Environment Banner (PRD §4 / F1).
-  - `src/app/page.tsx` displaying AIGENTRA architecture status.
-  - `src/app/globals.css` with CSS custom variables for light/dark design tokens.
-  - `tests/unit/setup.test.ts` validating Vitest and Zod schema validation.
-- **Security & Environmental Boundaries**:
-  - `.eslintrc.json` enforcing Four Rooms import isolation (Propose cannot import Execute; Execute accepts only verified mandates).
-  - `.gitignore` configured to ignore `.env*` files except `.env.example`.
-  - `.env.example` created matching PRD Appendix A without real credentials.
+- **Strict Environment Validation (`src/lib/env.ts`)**:
+  - Implemented `envSchema` using Zod matching PRD Appendix A variables.
+  - Required variables: `DATABASE_URL`, `SESSION_SECRET` (minimum 32 chars), `MANDATE_SIGNING_PRIVATE_KEY`, and `MANDATE_SIGNING_PUBLIC_KEY`.
+  - Added `PAYMENT_MODE` enum (`"paypal" | "dev_stub"`), defaulting to `"dev_stub"`.
+  - Added production guard via `.superRefine`: strictly refuses to start when `NODE_ENV === "production"` and `PAYMENT_MODE === "dev_stub"`.
+  - Optional integration variables: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `GEMINI_API_KEY`, `CHANNEL3_API_KEY`, `NEXT_PUBLIC_AG_LICENSE_KEY`.
+  - Graceful degradation helper: `getIntegrationStatus()` reports boolean flags (`true`/`false`) and human-readable missing integration labels.
+- **Health API Route (`src/app/api/health/route.ts`)**:
+  - Endpoint `GET /api/health` returning `status: "ok"`, `paymentMode`, boolean flags for integrations (database, paypal, gemini, channel3, agStudio), and `missingIntegrations` list.
+  - Strictly prevents secret or credential leakage.
+- **Home Page Updates (`src/app/page.tsx`)**:
+  - Purple persistent **SANDBOX** banner (`bg-status-sandbox`).
+  - Red **DEV STUB — NOT PAYPAL** banner (`bg-red-600`) rendered prominently when `PAYMENT_MODE === "dev_stub"`.
+  - Status card presenting live execution mode, integration health, and graceful degradation fallback notices.
+- **Documentation & Configuration**:
+  - Updated `.env.example` with `PAYMENT_MODE="dev_stub"`.
+- **Unit Test Suite (`tests/unit/env.test.ts`)**:
+  - 9 automated tests covering minimal valid env, missing required fields, session secret length, mandate keys, payment mode defaults, production refusal with `dev_stub`, and integration status reporting.
 - **Verification Completed**:
   - `npm run lint` -> Passed (0 errors, 0 warnings).
-  - `npm run typecheck` -> Passed (TypeScript strict check clean).
-  - `npm test` -> Passed (2 tests passed).
-  - `npm run build` -> Passed (production optimized build generated).
+  - `npm run typecheck` -> Passed (clean compilation).
+  - `npm test` -> Passed (11/11 tests green across `env.test.ts` and `setup.test.ts`).
+  - `npm run build` -> Passed (optimized static and dynamic route build).
 
 ### 2. What is Next
-- Task 2: Domain core
-  - Money arithmetic library (`src/lib/money.ts` — integer cents, formatting, validation).
+- Task 3: Domain arithmetic & canonical serialization
+  - Money arithmetic module (`src/lib/money.ts` — integer cents, no floating point, currency validation, formatting at boundary).
   - Canonical RFC 8785 JSON proposal hashing (`src/lib/canonical.ts`).
-  - Deterministic pure policy engine (`src/rooms/authorize/engine.ts`).
-  - Comprehensive unit test suite (60+ tests for boundary limits, kill switch, allowlists, and daily caps).
+  - Unit & property tests with `fast-check`.
 
 ### 3. Known Issues & Blockers
-- None. Clean baseline established and synchronized with remote repository.
+- None.
