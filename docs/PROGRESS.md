@@ -51,34 +51,40 @@
 - **Date**: 5 Nov 2026
 - **Status**: Completed & Verified
 
-### 1. What is Done
-- **Pure Function Policy Engine (`src/rooms/authorize/engine.ts`)**:
-  - Implemented `evaluate(proposal, policy, spendState, now)` strictly following Golden Rule 3 (no network, no database, no clock reads).
-  - Evaluates every rule in order of PRD §6.2:
-    1. Schema & Data Integrity (currency USD, quantity bounds 1-10, SKU presence, server price equality, recomputed total equality, price freshness).
-    2. Kill switch & Policy lifecycle (kill switch on, policy missing, DRAFT, PAUSED, REVOKED, validity window).
-    3. Merchant rules (`ALLOWLIST_ONLY`, `DENYLIST`, `ANY_WITH_APPROVAL`).
-    4. Categories (blocked categories -> DENY, missing/unknown -> REQUIRE_APPROVAL).
-    5. Per-item max cap & Cart max cap.
-    6. Daily cap (captured + reserved + this cart).
-    7. Velocity window (duplicate purchase heuristic).
-    8. Approval threshold (auto-allow vs. require approval).
-    9. System fail-closed safety (returns `DENY` with `EVAL_ERROR` without throwing).
-  - Decision Precedence: `DENY` beats `REQUIRE_APPROVAL` beats `ALLOW`.
-  - Itemized `rule_results` array returned for the explainable decision panel.
-- **Types & Reason Codes (`src/rooms/authorize/types.ts`)**:
-  - Full TypeScript definitions for `Decision`, `ReasonCode`, `PolicyRuleDefinition`, `ProposalToEvaluate`, `SpendState`, `RuleResult`, `EvaluationResult`.
-- **Comprehensive Unit Tests (`tests/unit/engine.test.ts`)**:
-  - 72 automated tests covering all 17 rule groups, limits (just below, equal, just above), Asia/Kolkata midnight daily cap reset, velocity windows, stale prices, kill switches, and pure function immutability.
-- **Verification Completed**:
-  - `npm run lint` -> Passed (0 errors, 0 warnings).
-  - `npm run typecheck` -> Passed (clean compilation).
-  - `npm test` -> Passed (115/115 tests green across all 6 test suites).
-  - `npm run build` -> Passed (clean production build).
+### What Was Done
+- Implemented `evaluate(proposal, policy, spendState, now)` in `src/rooms/authorize/engine.ts` strictly following Golden Rule 3 (pure function, no I/O, no internal clock reads).
+- Evaluates rules in order of PRD §6.2: integrity, kill switch, policy lifecycle, merchants, categories, item & cart caps, daily cap, velocity, approval threshold, and fail-closed safety.
+- 72 automated unit tests in `tests/unit/engine.test.ts` passing.
 
-### 2. What is Next
-- Task 6: Authority Mandate issuing and cryptographic verification (`src/rooms/authorize/mandates.ts`) using EdDSA / Ed25519 JWS (`jose`).
-- Single-use atomic consumption statement in database (`UPDATE mandates SET used_at = now() WHERE jti = $1 AND used_at IS NULL AND exp > now() RETURNING *`).
+---
 
-### 3. Known Issues & Blockers
+## Task 6: Proposal State Machine & Property-Based Invariant Tests
+- **Date**: 6 Nov 2026
+- **Status**: Completed & Verified
+
+### 1. Decisions and Rationale
+- **Added `fast-check` to devDependencies**:
+  - *Reason*: Required by PRD §5.1 and AGENTS.md Stack to perform generative property-based testing across hundreds of randomized scenarios, proving system invariants that static tests cannot fully explore.
+- **Pure Proposal State Machine (`src/rooms/authorize/stateMachine.ts`)**:
+  - *Decision*: Implemented `transition(state: ProposalState, event: ProposalEvent): ProposalState` with an explicit table of allowed transitions reflecting PRD §6.6.
+  - *Reason*: PRD §6.6 mandates that any transition not explicitly listed must be rejected by code as a security violation. Throws a typed `IllegalStateTransitionError`.
+- **Authorization Guard (`src/rooms/authorize/guard.ts`)**:
+  - *Decision*: Created `canExecute(evaluation, isHumanApproved)`.
+  - *Reason*: Formally enforces Golden Rule 1 & 2: under no circumstance can a proposal evaluated as `DENY` proceed to the execution layer.
+- **Property-Based Invariants (`tests/property/engine.property.test.ts`)**:
+  - *Property 1 (Executor Isolation)*: Generated 200 random permutations of proposals, policies, and spend states; proved that whenever `evaluate(...)` yields `DENY`, `canExecute()` strictly returns `false` (even if human-approved).
+  - *Property 2 (RFC 8785 Hash Stability)*: Generated 150 random proposals with shuffled keys, permuted item orderings, and injected untrusted metadata; proved that `computeProposalHash()` is strictly invariant.
+- **State Machine Unit Test Suite (`tests/unit/stateMachine.test.ts`)**:
+  - 24 tests verifying all 17 legal state transitions and rejecting invalid transitions (e.g. `DRAFT -> CAPTURED`, reviving `DENIED`, mutating `CONFIRMED`, `SUPERSEDED -> ORDER_CREATED`).
+
+### 2. Verification Report
+- `npm run lint` -> Passed (0 errors, 0 warnings).
+- `npm run typecheck` -> Passed (clean compilation).
+- `npm test` -> Passed (**141 / 141 tests green** across all 8 test suites: 72 engine + 24 stateMachine + 2 property + 10 canonical + 15 money + 9 env + 7 db-schema + 2 setup).
+- `npm run build` -> Passed (clean production build).
+
+### 3. What is Next
+- Task 7: Authority Mandate issuing and cryptographic verification (`src/rooms/authorize/mandates.ts`) using EdDSA / Ed25519 JWS (`jose`), with atomic consumption in database transactions.
+
+### 4. Known Issues & Blockers
 - None.
