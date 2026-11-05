@@ -28,49 +28,44 @@
 - **Date**: 5 Nov 2026
 - **Status**: Completed & Verified
 
+### What Was Done
+- Schema definition for all 14 tables in PRD §7 with strict PostgreSQL types and unique constraints.
+- Dual-mode database client (`src/lib/db/index.ts`) supporting live PostgreSQL and embedded PGlite in git-ignored `.data/`.
+- Migrations generated and executed (`npm run db:migrate`).
+- Schema constraints integration test (`tests/integration/db-schema.test.ts`) passing.
+
+---
+
+## Task 4: Money Arithmetic & Canonical Proposal Hashing
+- **Date**: 5 Nov 2026
+- **Status**: Completed & Verified
+
 ### 1. What is Done
-- **Drizzle ORM Schema (`src/lib/db/schema.ts`)**:
-  - Implemented all 14 tables from PRD §7 using PostgreSQL dialect:
-    - `workspaces`: Anonymous workspace isolation, metadata, kill switch.
-    - `policies` & `policy_versions`: Policy configuration and immutable versions. Unique on `(policy_id, version)`.
-    - `intents`: Raw prompt text and parsed JSON.
-    - `proposals`: Proposal states, RFC 8785 canonical hash, integer cents pricing.
-    - `evaluations`: Immutable evaluation audit records and reason codes.
-    - `mandates`: Single-use cryptographic mandates, `jti` primary key, `used_at` consumption tracking.
-    - `spend_reservations`: Concurrency control against daily budget limits.
-    - `paypal_orders`: Order tracking anchored to proposal hash. Unique on `proposal_id` and `paypal_order_id`.
-    - `paypal_captures`: Capture events. Unique on `capture_id`.
-    - `webhook_events`: Primary key deduplication on `paypal_event_id`.
-    - `ledger_events`: Append-only hash-chained ledger. Unique on `(workspace_id, seq)`.
-    - `attack_runs`: Adversarial attack tracking (scenarios A1–A7) and request counters.
-    - `ai_usage`: Workspace token usage limits.
-- **Dual-Mode Client (`src/lib/db/index.ts`)**:
-  - Automatically switches between PostgreSQL (`node-postgres` with `DATABASE_URL`) and embedded `@electric-sql/pglite` stored in git-ignored `.data/`.
-  - Enables zero-account offline development with exact PostgreSQL SQL syntax.
-- **SQL Migrations & Runner (`scripts/migrate.ts`)**:
-  - Generated initial migration: `drizzle/0000_glamorous_jamie_braddock.sql`.
-  - Added `"db:migrate": "vite-node scripts/migrate.ts"` running migration across both PostgreSQL and PGlite.
-  - Successfully executed initial migration against embedded `.data/` PGlite instance.
-- **Integration Test Suite (`tests/integration/db-schema.test.ts`)**:
-  - Automated tests verifying key constraints:
-    - Primary key and foreign key enforcement.
-    - Unique constraint on `policy_versions(policy_id, version)`.
-    - Unique constraint on `mandates(jti)`.
-    - Unique constraint on `paypal_orders(proposal_id)`.
-    - Unique constraint on `paypal_captures(capture_id)`.
-    - Unique constraint on `ledger_events(workspace_id, seq)`.
+- **Money Arithmetic (`src/lib/money.ts`)**:
+  - Enforces Golden Rule 4: Money is integer cents plus ISO currency; zero floating-point arithmetic.
+  - Safe operations: `assertIntegerCents()`, `safeAddCents()`, `safeMultiplyCents()`.
+  - PayPal boundary formatting: `centsToPayPalString()` converting integer cents to `"84.99"`.
+  - String parsing: `parseStringToCents()` converting strings into integer cents without float drift.
+  - Currency validation: `validateCurrency()` enforcing USD in sandbox.
+- **RFC 8785 Canonical JSON & Proposal Hashing (`src/lib/canonical.ts`)**:
+  - Implements PRD §6.4:
+    `proposal_hash = sha256(RFC 8785 canonical JSON of { workspace_id, items[{ sku, merchant_domain, unit_price_cents, quantity }] sorted by sku, currency, total_cents, shipping_cents, tax_cents, checkout_terms_version })`.
+  - Strips untrusted and non-material data (product display names, titles, descriptions, image URLs, tracking IDs).
+  - Normalizes and sorts line items lexicographically by `sku`.
+  - Exports `computeProposalHash()` and UI helper `shortProposalHash()` (first 8 characters).
+- **Automated Unit Tests**:
+  - `tests/unit/money.test.ts`: 15 tests covering integer validation, safe addition, multiplication, formatting, parsing, and float rejection.
+  - `tests/unit/canonical.test.ts`: 10 tests proving key order invariance, sku sorting invariance, untrusted field immunity, and hash sensitivity to price, quantity, merchant, total, or currency alterations.
 - **Verification Completed**:
-  - `npm run db:migrate` -> Applied clean.
   - `npm run lint` -> Passed (0 errors, 0 warnings).
   - `npm run typecheck` -> Passed (clean compilation).
-  - `npm test` -> Passed (18/18 tests green across unit and integration suites).
-  - `npm run build` -> Passed (production optimized build generated).
+  - `npm test` -> Passed (43/43 tests green across all 5 test suites).
 
 ### 2. What is Next
-- Task 4: Pure deterministic policy engine & money library
-  - `src/lib/money.ts`: Integer cents arithmetic and formatting.
-  - `src/lib/canonical.ts`: RFC 8785 canonical JSON hashing (`SHA-256`).
-  - `src/rooms/authorize/engine.ts`: Pure `evaluate()` function with 60+ tests.
+- Task 5: Deterministic Policy Engine
+  - `src/rooms/authorize/engine.ts`: Pure function `evaluate(proposal, policy, spendState, now)`.
+  - Evaluation rules: schema integrity, kill switch, merchant allow/denylist, blocked/unknown categories, per-item cap, cart cap, daily cap, velocity window, threshold approval.
+  - 60+ unit and property tests.
 
 ### 3. Known Issues & Blockers
 - None.
