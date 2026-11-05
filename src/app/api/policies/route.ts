@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { eq, desc } from "drizzle-orm";
+import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { parseWorkspaceCookie } from "@/lib/session";
+import { policyFormSchema } from "@/lib/policies";
 
 export async function GET(req: Request) {
   const cookieHeader = req.headers.get("cookie");
@@ -28,7 +30,7 @@ export async function GET(req: Request) {
     .where(eq(schema.policyVersions.workspaceId, workspaceId))
     .orderBy(desc(schema.policyVersions.version));
 
-  // Attach latest version to each policy
+  // Attach latest version and full version list to each policy
   const policiesWithVersions = userPolicies.map((p) => {
     const policyVersions = versions.filter((v) => v.policyId === p.id);
     const activeVersion = policyVersions[0] ?? null;
@@ -46,4 +48,70 @@ export async function GET(req: Request) {
     ok: true,
     policies: policiesWithVersions,
   });
+}
+
+export async function POST(req: Request) {
+  const cookieHeader = req.headers.get("cookie");
+  const workspaceId = parseWorkspaceCookie(cookieHeader);
+
+  if (!workspaceId) {
+    return NextResponse.json(
+      { ok: false, error: "Unauthorized: Missing or invalid workspace session" },
+      { status: 401 }
+    );
+  }
+
+  try {
+    const body = await req.json();
+    const parseResult = policyFormSchema.safeParse(body);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Validation error",
+          errors: parseResult.error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+
+    const rules = parseResult.data;
+    const policyId = `pol_${crypto.randomBytes(8).toString("hex")}`;
+    const policyVersionId = `pv_${crypto.randomBytes(8).toString("hex")}`;
+
+    // 1. Insert Policy
+    await db.insert(schema.policies).values({
+      id: policyId,
+      workspaceId,
+    });
+
+    // 2. Insert Version 1 (Immutable)
+    await db.insert(schema.policyVersions).values({
+      id: policyVersionId,
+      workspaceId,
+      policyId,
+      version: 1,
+      rulesJson: rules,
+    });
+
+    return NextResponse.json(
+      {
+        ok: true,
+        policy: {
+          id: policyId,
+          workspaceId,
+          version: 1,
+          rules,
+        },
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("Failed to create policy:", error);
+    return NextResponse.json(
+      { ok: false, error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
 }

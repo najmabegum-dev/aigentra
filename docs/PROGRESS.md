@@ -64,18 +64,16 @@
 
 ### 1. Decisions and Rationale
 - **Added `fast-check` to devDependencies**:
-  - *Reason*: Required by PRD §5.1 and AGENTS.md Stack to perform generative property-based testing across hundreds of randomized scenarios, proving system invariants that static tests cannot fully explore.
+  - *Reason*: Required by PRD §5.1 and AGENTS.md Stack to perform generative property-based testing across hundreds of randomized scenarios.
 - **Pure Proposal State Machine (`src/rooms/authorize/stateMachine.ts`)**:
-  - *Decision*: Implemented `transition(state: ProposalState, event: ProposalEvent): ProposalState` with an explicit table of allowed transitions reflecting PRD §6.6.
-  - *Reason*: PRD §6.6 mandates that any transition not explicitly listed must be rejected by code as a security violation. Throws a typed `IllegalStateTransitionError`.
+  - *Decision*: Implemented `transition(state: ProposalState, event: ProposalEvent): ProposalState` with an explicit table of allowed transitions reflecting PRD §6.6. Throws a typed `IllegalStateTransitionError`.
 - **Authorization Guard (`src/rooms/authorize/guard.ts`)**:
-  - *Decision*: Created `canExecute(evaluation, isHumanApproved)`.
-  - *Reason*: Formally enforces Golden Rule 1 & 2: under no circumstance can a proposal evaluated as `DENY` proceed to the execution layer.
+  - *Decision*: Created `canExecute(evaluation, isHumanApproved)` enforcing Golden Rule 1 & 2.
 - **Property-Based Invariants (`tests/property/engine.property.test.ts`)**:
-  - *Property 1 (Executor Isolation)*: Generated 200 random permutations of proposals, policies, and spend states; proved that whenever `evaluate(...)` yields `DENY`, `canExecute()` strictly returns `false` (even if human-approved).
-  - *Property 2 (RFC 8785 Hash Stability)*: Generated 150 random proposals with shuffled keys, permuted item orderings, and injected untrusted metadata; proved that `computeProposalHash()` is strictly invariant.
+  - *Property 1 (Executor Isolation)*: Proved that whenever `evaluate(...)` yields `DENY`, `canExecute()` strictly returns `false`.
+  - *Property 2 (RFC 8785 Hash Stability)*: Proved that `computeProposalHash()` is strictly invariant under key reordering.
 - **State Machine Unit Test Suite (`tests/unit/stateMachine.test.ts`)**:
-  - 24 tests verifying all 17 legal state transitions and rejecting invalid transitions (e.g. `DRAFT -> CAPTURED`, reviving `DENIED`, mutating `CONFIRMED`, `SUPERSEDED -> ORDER_CREATED`).
+  - 24 tests verifying all 17 legal state transitions and rejecting invalid transitions.
 
 ---
 
@@ -85,35 +83,46 @@
 
 ### 1. Decisions and Rationale
 - **Anonymous Workspace & Signed Session Cookie (`src/lib/session.ts`, `src/app/api/workspaces/route.ts`)**:
-  - *Decision*: Workspace IDs are cryptographically signed using HMAC-SHA256 (`SESSION_SECRET`) and stored in an `HttpOnly`, `SameSite=Lax`, `Path=/`, 14-day max-age cookie named `aigentra_workspace`. Verification uses constant-time comparison (`crypto.timingSafeEqual`) to prevent timing side channels.
-  - *Reason*: PRD §7 specifies anonymous workspaces auto-purged after 14 days without requiring visitor registration. Signing ensures client-side identity cannot be spoofed or altered.
-- **Sample Policy Seeding ("Home Office Guardrails")**:
-  - *Decision*: On `POST /api/workspaces`, seeded an initial active policy version:
-    - Cart Max: $150.00 USD (15,000 cents)
-    - Approval Threshold: $50.00 USD (5,000 cents)
-    - Per-Item Max: $120.00 USD (12,000 cents)
-    - Daily Spend Cap: $200.00 USD (20,000 cents)
-    - Merchant Mode: `DENYLIST` (`["sketchy-deals.com", "gambling-gear.com"]`)
-    - Blocked Categories: `["gift_cards", "gambling", "weapons"]`
-    - Status: `ACTIVE`
-  - *Reason*: Conforms to exact requirements from user prompt and PRD §10.1.
+  - Workspace IDs cryptographically signed via HMAC-SHA256 with constant-time verification.
+  - Initial seed of "Home Office Guardrails" policy.
 - **Tenant Isolation Enforcement (Golden Rule 9)**:
-  - *Decision*: Added policy endpoints (`GET /api/policies`, `GET /api/policies/[id]`) that strictly scope reads by `workspace_id = session.workspace_id`. If a caller queries an ID belonging to another workspace, the server returns 404 with no data leakage.
-  - *Test*: Created `tests/integration/workspace-isolation.test.ts` verifying Workspace B cannot read Workspace A's policy or version records by ID.
+  - Policy endpoints strictly scope reads by `workspace_id = session.workspace_id`.
+  - Added `tests/integration/workspace-isolation.test.ts`.
 - **App Shell & Design Tokens (PRD §10.1)**:
-  - *Decision*: Configured full CSS variable tokens in `src/app/globals.css` and `tailwind.config.ts` supporting dark mode and meeting WCAG AA contrast (4.5:1).
-  - *Components*:
-    - `src/ui/banners.tsx`: Persistent purple SANDBOX banner and conditional red DEV STUB banner.
-    - `src/ui/header.tsx`: Wordmark "AIGENTRA" with `ShieldCheck` glyph, workspace badge with copy button, and theme toggle.
-    - `src/ui/sidebar.tsx`: Navigation for Policies, Agent, Approvals, Control Tower, Attack Lab, Settings.
-    - `src/ui/app-shell.tsx`: Shared application layout wrapper.
-    - `src/app/page.tsx`: Landing page with "Enter demo workspace" button, 4-step architecture explainer, and honest sandbox disclosure.
-    - `src/app/(workspace)/policies/page.tsx`: Displays active policy guardrails and structured plain-language summary.
+  - Full CSS variable tokens supporting dark mode with WCAG AA compliance.
+  - Persistent banners, header with `ShieldCheck`, sidebar navigation, and landing page.
+
+---
+
+## Task 8: Policy Studio Implementation (PRD F2 & §10.2)
+- **Date**: 6 Nov 2026
+- **Status**: Completed & Verified
+
+### 1. Decisions and Rationale
+- **Policy Input Validation Schema (`src/lib/policies.ts`)**:
+  - *Decision*: Built `policyFormSchema` with strict Zod validation enforcing PRD §6.1 fields: currency (`USD`), `per_item_max_cents`, `cart_max_cents`, `approval_threshold_cents`, `daily_cap_cents`, `merchant_mode`, `merchants` (normalized domain parser), `blocked_categories` vocabulary, `velocity_minutes`, `price_max_age_seconds`, and date range constraints.
+  - *Reason*: Cross-field validation prevents logical contradictions (e.g. `per_item_max > cart_max`, `approval_threshold > cart_max`, or `cart_max > daily_cap`).
+- **Immutable Version History (`src/app/api/policies/[id]/route.ts`)**:
+  - *Decision*: Every material policy modification and status transition writes an append-only new row to `policy_versions` with an auto-incremented `version` number (`v1`, `v2`, ...). Previous version rows are never updated or deleted.
+  - *Reason*: Satisfies PRD §7 and F2 auditability requirements ("Versions immutable, no UPDATE trigger").
+- **Status Lifecycle & Transitions (`POST /api/policies/[id]/status`)**:
+  - *Decision*: Supported state lifecycle: `DRAFT` -> `ACTIVE` -> `PAUSED` -> `REVOKED`. Revocation is enforced as terminal (read-only).
+- **Emergency Kill Switch (`src/app/api/workspace/kill-switch/route.ts`)**:
+  - *Decision*: Implemented workspace-level kill switch toggle. When engaged, `evaluate` immediately returns `DENY` with reason code `KILL_SWITCH_ON`.
+- **Policy Studio UI Architecture (`src/ui/policy-studio/`)**:
+  - *Decision*: Two-column layout per PRD §10.2:
+    - Left column: `PolicyForm` with field inputs, real-time error states, and action triggers.
+    - Right column: `LivePreview` displaying structured limits and real-time generated plain-language summaries (`generatePlainLanguageSummary`), plus `VersionHistory` list allowing historical version inspection.
+    - Top banner: `KillSwitchBanner` with high-visibility state indicators (Armed / Disarmed).
+  - *States designed*: Empty state, Draft state, Active state, Paused state, Revoked (terminal) state, and Inline validation error states.
 
 ### 2. Verification Report
 - `npm run lint` -> Passed (✔ No ESLint warnings or errors).
 - `npm run typecheck` -> Passed (0 errors).
-- `npm test` -> Passed (**153 / 153 tests green** across 11 test files):
+- `npm run build` -> Passed (All 13 routes compiled and statically optimized).
+- `npm test` -> Passed (**165 / 165 tests green** across 13 test files):
+  - `tests/unit/policy-schema.test.ts` (7 tests)
+  - `tests/integration/policy-studio.test.ts` (5 tests)
   - `tests/unit/engine.test.ts` (72 tests)
   - `tests/unit/stateMachine.test.ts` (24 tests)
   - `tests/unit/money.test.ts` (15 tests)
@@ -127,7 +136,7 @@
   - `tests/integration/workspaces-seed.test.ts` (1 test)
 
 ### 3. What is Next
-- Task 8: Authority Mandate issuing and cryptographic verification (`src/rooms/authorize/mandates.ts`) using EdDSA / Ed25519 JWS (`jose`), with atomic consumption in database transactions.
+- Task 9: Authority Mandate issuing and cryptographic verification (`src/rooms/authorize/mandates.ts`) using EdDSA / Ed25519 JWS (`jose`), with atomic consumption in database transactions.
 
 ### 4. Known Issues & Blockers
 - None.
