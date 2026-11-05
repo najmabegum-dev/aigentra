@@ -45,6 +45,7 @@ export type MerchantMode = "ALLOWLIST_ONLY" | "DENYLIST" | "ANY_WITH_APPROVAL";
 export type PolicyStatus = "DRAFT" | "ACTIVE" | "PAUSED" | "REVOKED";
 
 export interface PolicyRuleDefinition {
+  name?: string;
   currency: "USD";
   per_item_max_cents: number;
   cart_max_cents: number;

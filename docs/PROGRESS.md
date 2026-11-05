@@ -77,14 +77,57 @@
 - **State Machine Unit Test Suite (`tests/unit/stateMachine.test.ts`)**:
   - 24 tests verifying all 17 legal state transitions and rejecting invalid transitions (e.g. `DRAFT -> CAPTURED`, reviving `DENIED`, mutating `CONFIRMED`, `SUPERSEDED -> ORDER_CREATED`).
 
+---
+
+## Task 7: Workspace Provisioning, IDOR Isolation & App Shell (PRD §10.1)
+- **Date**: 6 Nov 2026
+- **Status**: Completed & Verified
+
+### 1. Decisions and Rationale
+- **Anonymous Workspace & Signed Session Cookie (`src/lib/session.ts`, `src/app/api/workspaces/route.ts`)**:
+  - *Decision*: Workspace IDs are cryptographically signed using HMAC-SHA256 (`SESSION_SECRET`) and stored in an `HttpOnly`, `SameSite=Lax`, `Path=/`, 14-day max-age cookie named `aigentra_workspace`. Verification uses constant-time comparison (`crypto.timingSafeEqual`) to prevent timing side channels.
+  - *Reason*: PRD §7 specifies anonymous workspaces auto-purged after 14 days without requiring visitor registration. Signing ensures client-side identity cannot be spoofed or altered.
+- **Sample Policy Seeding ("Home Office Guardrails")**:
+  - *Decision*: On `POST /api/workspaces`, seeded an initial active policy version:
+    - Cart Max: $150.00 USD (15,000 cents)
+    - Approval Threshold: $50.00 USD (5,000 cents)
+    - Per-Item Max: $120.00 USD (12,000 cents)
+    - Daily Spend Cap: $200.00 USD (20,000 cents)
+    - Merchant Mode: `DENYLIST` (`["sketchy-deals.com", "gambling-gear.com"]`)
+    - Blocked Categories: `["gift_cards", "gambling", "weapons"]`
+    - Status: `ACTIVE`
+  - *Reason*: Conforms to exact requirements from user prompt and PRD §10.1.
+- **Tenant Isolation Enforcement (Golden Rule 9)**:
+  - *Decision*: Added policy endpoints (`GET /api/policies`, `GET /api/policies/[id]`) that strictly scope reads by `workspace_id = session.workspace_id`. If a caller queries an ID belonging to another workspace, the server returns 404 with no data leakage.
+  - *Test*: Created `tests/integration/workspace-isolation.test.ts` verifying Workspace B cannot read Workspace A's policy or version records by ID.
+- **App Shell & Design Tokens (PRD §10.1)**:
+  - *Decision*: Configured full CSS variable tokens in `src/app/globals.css` and `tailwind.config.ts` supporting dark mode and meeting WCAG AA contrast (4.5:1).
+  - *Components*:
+    - `src/ui/banners.tsx`: Persistent purple SANDBOX banner and conditional red DEV STUB banner.
+    - `src/ui/header.tsx`: Wordmark "AIGENTRA" with `ShieldCheck` glyph, workspace badge with copy button, and theme toggle.
+    - `src/ui/sidebar.tsx`: Navigation for Policies, Agent, Approvals, Control Tower, Attack Lab, Settings.
+    - `src/ui/app-shell.tsx`: Shared application layout wrapper.
+    - `src/app/page.tsx`: Landing page with "Enter demo workspace" button, 4-step architecture explainer, and honest sandbox disclosure.
+    - `src/app/(workspace)/policies/page.tsx`: Displays active policy guardrails and structured plain-language summary.
+
 ### 2. Verification Report
-- `npm run lint` -> Passed (0 errors, 0 warnings).
-- `npm run typecheck` -> Passed (clean compilation).
-- `npm test` -> Passed (**141 / 141 tests green** across all 8 test suites: 72 engine + 24 stateMachine + 2 property + 10 canonical + 15 money + 9 env + 7 db-schema + 2 setup).
-- `npm run build` -> Passed (clean production build).
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors).
+- `npm run typecheck` -> Passed (0 errors).
+- `npm test` -> Passed (**153 / 153 tests green** across 11 test files):
+  - `tests/unit/engine.test.ts` (72 tests)
+  - `tests/unit/stateMachine.test.ts` (24 tests)
+  - `tests/unit/money.test.ts` (15 tests)
+  - `tests/unit/canonical.test.ts` (10 tests)
+  - `tests/unit/env.test.ts` (9 tests)
+  - `tests/unit/session.test.ts` (7 tests)
+  - `tests/integration/db-schema.test.ts` (7 tests)
+  - `tests/integration/workspace-isolation.test.ts` (4 tests)
+  - `tests/property/engine.property.test.ts` (2 tests)
+  - `tests/unit/setup.test.ts` (2 tests)
+  - `tests/integration/workspaces-seed.test.ts` (1 test)
 
 ### 3. What is Next
-- Task 7: Authority Mandate issuing and cryptographic verification (`src/rooms/authorize/mandates.ts`) using EdDSA / Ed25519 JWS (`jose`), with atomic consumption in database transactions.
+- Task 8: Authority Mandate issuing and cryptographic verification (`src/rooms/authorize/mandates.ts`) using EdDSA / Ed25519 JWS (`jose`), with atomic consumption in database transactions.
 
 ### 4. Known Issues & Blockers
 - None.

@@ -15,22 +15,26 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        surface: "var(--surface)",
-        ink: "#0B1220",
+        surface: {
+          DEFAULT: "var(--surface)",
+          raised: "var(--surface-raised)",
+        },
+        ink: "var(--ink)",
+        border: "var(--border)",
         muted: {
           DEFAULT: "var(--muted)",
           foreground: "var(--muted-foreground)",
         },
         primary: {
-          DEFAULT: "#2F5BFF",
-          foreground: "#FFFFFF",
+          DEFAULT: "var(--primary)",
+          foreground: "var(--primary-foreground)",
         },
         status: {
-          allow: "#0E9F6E",
-          approval: "#D97706",
-          deny: "#DC2626",
-          info: "#2563EB",
-          sandbox: "#6D28D9",
+          allow: "var(--status-allow)",
+          approval: "var(--status-approval)",
+          deny: "var(--status-deny)",
+          info: "var(--status-info)",
+          sandbox: "var(--status-sandbox)",
         },
       },
       borderRadius: {
@@ -38,8 +42,11 @@ const config: Config = {
         input: "8px",
       },
       fontFamily: {
-        sans: ["var(--font-inter)", "Inter", "sans-serif"],
+        sans: ["var(--font-inter)", "Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
         mono: ["var(--font-jetbrains-mono)", "JetBrains Mono", "monospace"],
+      },
+      transitionDuration: {
+        standard: "150ms",
       },
     },
   },
