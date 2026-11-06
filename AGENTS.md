@@ -26,7 +26,7 @@ Hackathon deadline: Thu 12 Nov 2026 12:00 PM PST = Fri 13 Nov 01:30 IST. Interna
 - Prefer small diffs. Do not rewrite files you were not asked to change.
 - After each task run: `npm run lint`, `npm run typecheck`, `npm test`. Report the output honestly. Never claim something works unless you ran it.
 - If something fails three times, stop, explain what you tried, and ask.
-- Update `docs/PROGRESS.md` at the end of each task (what is done, what is next, known issues).
+- Update `docs/PROGRESS.md` in the SAME commit as the work it describes (see "Git and progress rules").
 
 ## Stack
 Next.js (App Router) + TypeScript strict, Tailwind + shadcn/ui, Zod, Drizzle + PostgreSQL, Vercel AI SDK (Gemini default), `@paypal/paypal-server-sdk`, `jose` (EdDSA JWS), `canonicalize` (RFC 8785), Vitest + fast-check, AG Studio (`ag-studio-react`).
@@ -42,7 +42,78 @@ Strict TypeScript, no `any`. Zod at every boundary. Small pure functions. Names 
 Sandbox banner always visible. AIGENTRA approval and PayPal buyer consent are always shown as separate steps. Every decision shows its reason codes. Every empty, loading and error state is designed. WCAG AA contrast, keyboard operable, respects reduced motion.
 
 ## Definition of done (per task)
-Acceptance test from the PRD passes on the deployed app, automated tests exist for deterministic logic, failure states render sensible messages, `docs/JUDGES.md` has a proof link, changes are committed with a clear message.
 
+Acceptance test from the PRD passes on the deployed app, automated tests exist for deterministic logic, failure states render sensible messages, `docs/JUDGES.md` has a proof link, `docs/PROGRESS.md` is updated, lint, typecheck and tests all pass, and the work is committed and pushed following "Git and progress rules".
 ## Honesty rules
 Do not invent users, metrics, quotes or capabilities. Label seeded data as seeded. Label the Channel3-to-PayPal settlement stand-in honestly. We are AP2-inspired, not AP2-compliant.
+## Git and progress rules
+
+These apply from now on. Do not rewrite existing history.
+
+### When to commit
+- Commit after every meaningful unit of work that is done and working: one function, one endpoint, one component, one fix, one config change. Never wait until the end of a phase.
+- Before each commit run `npm run lint`, `npm run typecheck`, `npm test`. If any fail, fix first. Never commit broken code.
+- One logical change per commit. If the summary needs "and", split it.
+- Write the test first and commit it separately: `test(scope): ...`, then `feat(scope): ...`.
+- If more than about 3 files or 100 lines changed without a commit, you went too long. Split it.
+- Stage files explicitly with `git add <file>`. Never `git add .`. Check `git status` and `git diff --staged` first.
+- Keep unrelated changes out of the commit (config, refactor, feature each get their own).
+
+### Commit message format
+`type(scope): imperative summary`
+- Subject 72 characters or fewer, lowercase, no period, space after the colon, always with a scope.
+- Imperative mood: "add", "fix", "implement".
+- Add a body explaining why when it is not obvious.
+- Types: `feat` (new behaviour only), `fix`, `test`, `docs`, `refactor`, `chore` (scaffold, tooling, deps, config), `build`, `style`.
+- Scopes match the folder map: `propose`, `authorize`, `execute`, `verify`, `db`, `ui`, `studio`, `env`, `deps`, `progress`.
+- Examples: `feat(propose): add Channel3 search client`, `test(authorize): cover EVAL_ERROR deny path`, `chore(deps): add fast-check`.
+
+### Branching
+- Never commit directly to `main`.
+- One branch per phase: `feat/<name>`, `fix/<name>`, `chore/<name>`.
+- When a phase is complete and checks pass, open a PR into `main` with a short summary and how it was tested, then merge.
+- After merging, tag: `git tag phase-<n>` then `git push --tags`.
+- Push after every commit so work is never only local.
+
+### docs/PROGRESS.md
+- Update it in the same commit as the work. Never "catch up" later.
+- Phase start: add a section with status, goal, and branch name.
+- Each unit of work: tick the checklist item and add one change-log line with the short commit hash.
+- Phase end: mark done, add the PR link, the tag, and what was tested.
+- Record blockers, skipped items and decisions under Issues / Decisions. Do not hide problems.
+- Append only. Never delete or rewrite past phases except to fix a factual mistake.
+- Use this shape for each new phase, and keep the existing phases untouched:
+
+```md
+## Phase <n>: <name>
+- Status: In progress | Done | Blocked
+- Branch: feat/<name>
+- PR / Tag: #<n> / phase-<n>
+
+### Checklist
+- [x] <item> (<short hash>)
+- [ ] <item>
+
+### Tested
+- <command run and result>
+
+### Issues / Decisions
+- <problem or choice, and why>
+
+### Next
+- <what comes next>
+```
+
+### Commit flow for every unit of work
+1. Make the change. If it touches `authorize`, `execute` or `verify`, get plan approval first.
+2. Run lint, typecheck and tests. Fix failures.
+3. Update `docs/PROGRESS.md`.
+4. Stage files explicitly and review `git diff --staged` for secrets.
+5. Commit with the format above and push.
+
+### Security and history
+- Never commit secrets, keys, tokens or `.env` files. Only `.env.example` with placeholder values is allowed. This is the one exception to "never edit `.env*` files", and the agent may add placeholder names there but never real values.
+- If a secret is ever committed, stop and tell me immediately so the key can be rotated. Do not just delete it in a later commit.
+- Never force-push to `main` or rewrite shared history.
+- Do not commit `node_modules`, build output or generated files.
+- Keep `README.md` current: description, tech stack, setup, env var names, how to run and test.
