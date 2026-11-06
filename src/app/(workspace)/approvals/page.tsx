@@ -1,4 +1,5 @@
 import { CheckCircle2 } from "lucide-react";
+import { ApprovalCentre } from "@/ui/approvals/ApprovalCentre";
 
 export default function ApprovalsPage() {
   return (
@@ -9,13 +10,11 @@ export default function ApprovalsPage() {
           Approval Centre
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Review pending proposals requiring human authorization before single-use mandate issuance.
+          Review pending proposals requiring human authorization before single-use mandate issuance (PRD §6.5 & F5).
         </p>
       </div>
 
-      <div className="rounded-card border border-border bg-surface p-8 text-center text-muted-foreground text-sm">
-        No pending approval requests in queue. Proposals exceeding the $50.00 threshold will appear here.
-      </div>
+      <ApprovalCentre />
     </div>
   );
 }

@@ -34,11 +34,55 @@ export type DenyIntegrityReasonCode =
   | "PRICE_STALE"
   | "EVAL_ERROR";
 
+export type ExecutionReasonCode =
+  | "MANDATE_MISSING"
+  | "MANDATE_BAD_SIGNATURE"
+  | "MANDATE_EXPIRED"
+  | "MANDATE_ALREADY_USED"
+  | "HASH_MISMATCH"
+  | "POLICY_CHANGED"
+  | "AMOUNT_DRIFT";
+
 export type ReasonCode =
   | AllowReasonCode
   | RequireApprovalReasonCode
   | DenyPolicyReasonCode
-  | DenyIntegrityReasonCode;
+  | DenyIntegrityReasonCode
+  | ExecutionReasonCode;
+
+export type MandateGrant = "POLICY_AUTO" | "HUMAN_APPROVAL";
+
+declare const VerifiedMandateBrand: unique symbol;
+
+export type VerifiedMandate = {
+  readonly [VerifiedMandateBrand]: true;
+  readonly jti: string;
+  readonly workspaceId: string;
+  readonly proposalId: string;
+  readonly proposalHash: string;
+  readonly policyVersionId: string;
+  readonly amountCents: number;
+  readonly currency: string;
+  readonly merchantDomains: string[];
+  readonly grant: MandateGrant;
+  readonly issuedAt: Date;
+  readonly expiresAt: Date;
+  readonly rawToken: string;
+};
+
+export interface MandateClaims {
+  jti: string;
+  sub: string;
+  prop: string;
+  polv: string;
+  amt: number;
+  cur: string;
+  mrc: string[];
+  grant: MandateGrant;
+  proposal_id: string;
+  iat: number;
+  exp: number;
+}
 
 export type MerchantMode = "ALLOWLIST_ONLY" | "DENYLIST" | "ANY_WITH_APPROVAL";
 

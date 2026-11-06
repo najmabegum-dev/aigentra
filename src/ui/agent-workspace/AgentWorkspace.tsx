@@ -207,8 +207,17 @@ export function AgentWorkspace() {
           evaluatedAt={decision.evaluatedAt}
           proposalId={decision.proposalId}
           totalCents={decision.totalCents}
-          onProceed={() => {
-            window.location.href = "/checkout";
+          onProceed={async () => {
+            if (decision.verdict === "ALLOW" && decision.proposalId) {
+              try {
+                await fetch(`/api/proposals/${decision.proposalId}/mandate`, {
+                  method: "POST",
+                });
+              } catch (e) {
+                console.error("Failed to issue POLICY_AUTO mandate:", e);
+              }
+            }
+            window.location.href = `/checkout?proposal_id=${decision.proposalId}`;
           }}
         />
       )}
