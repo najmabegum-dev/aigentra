@@ -427,3 +427,35 @@
 
 ### Next
 - Phase 17: AG Studio base (works without a license) — `GET /api/studio-data`, Control Tower page, theming tokens, proprietary notice.
+
+
+---
+
+## Phase 17: AG Studio Base & Control Tower Telemetry
+- Status: Done
+- Branch: feat/ag-studio-base
+- PR / Tag: #17 / phase-17
+
+### Checklist
+- [x] Installed `ag-studio-react` (v3.1.0) and associated dependencies
+- [x] Added `NOTICE` acknowledging AG Studio and AG Grid as proprietary commercial software owned by AG GRID LTD used under evaluation terms
+- [x] Implemented workspace-scoped `GET /api/studio-data` returning `ledger`, `proposals`, `decisions`, and `captures` arrays with seeded fallback for empty states
+- [x] Implemented `initStudioLicense()` supporting `NEXT_PUBLIC_AG_LICENSE_KEY` with graceful fallback to evaluation mode (vendor watermark)
+- [x] Implemented custom theme in `src/studio/theme.ts` translating AIGENTRA design tokens to light and dark Studio themes
+- [x] Built the Control Tower component (`src/studio/StudioControlTower.tsx`) dynamically mounting `AgStudio` with multi-source tabs and real-time KPI overview
+- [x] Mounted Control Tower on `/studio` route (`src/app/(workspace)/studio/page.tsx`)
+- [x] Automated integration tests in `tests/integration/studio-data-api.test.ts` verifying authentication, seeded fallback, and live data scoping
+
+### Tested
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npm test` -> Passed (255 / 255 tests passing across 29 test files)
+
+### Issues / Decisions
+- Followed PRD §10.4 & F9: Control Tower loads workspace-scoped telemetry without requiring a proprietary license key upfront; `NEXT_PUBLIC_AG_LICENSE_KEY` is supported if provided.
+- Added four data sources (`ledger`, `proposals`, `decisions`, `captures`) to the Studio configuration.
+- Client-side dynamic loading with `ssr: false` prevents SSR hydration errors while maintaining fast page load.
+- Maintained strict tenant isolation: all database queries in `/api/studio-data` filter by `workspace_id`.
+
+### Next
+- Phase 18: Custom widgets — Authority Budget Ring, Decision Mix, Blocked Attempts Feed, Chain Integrity Badge, and cross-filtering.

@@ -1,0 +1,11 @@
+AIGENTRA — Notice & Third-Party Software Acknowledgements
+
+This project uses AG Studio (ag-studio, ag-studio-react) under commercial / evaluation license terms.
+
+AG Studio:
+- Copyright (c) AG GRID LTD. All rights reserved.
+- Proprietary software: AG Studio and its associated packages (ag-studio, ag-studio-react, ag-grid-enterprise) are proprietary commercial software owned by AG GRID LTD.
+- Evaluation / Hackathon use permitted under AG Grid Hackathon and evaluation terms.
+- Source and distribution terms: https://www.ag-grid.com/studio/ and https://www.ag-grid.com/license/
+
+All other code written specifically for AIGENTRA is provided under the terms of the project repository license.
