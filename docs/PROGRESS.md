@@ -490,3 +490,36 @@
 
 ### Next
 - Phase 19: Auditor agent with three read-only tools: `query_ledger`, `explain_decision(id)`, `summarize_blocked(range)`.
+
+
+---
+
+## Phase 19: Auditor Agent
+- Status: Done
+- Branch: feat/auditor-agent
+- PR / Tag: #19 / phase-19
+
+### Checklist
+- [x] Defined 3 strictly read-only auditor tools in `src/studio/auditor/tools.ts`: `query_ledger`, `explain_decision`, `summarize_blocked`
+- [x] Enforced Golden Rule 1: Auditor Agent tools are 100% read-only (`isReadOnly: true`, `canWrite: false`, `touchesPayments: false`) with 0 payment capabilities
+- [x] Implemented server-side conversational agent in `src/studio/auditor/agent.ts` with Vercel AI SDK (Gemini default), rate-cap enforcement via `ai_usage`, and deterministic Replay fallback
+- [x] Built secure server-side API endpoint `POST /api/auditor/chat` scoped strictly by workspace session cookie
+- [x] Built AG Studio Auditor Chat UI in `src/studio/auditor/AuditorChat.tsx` with quick audit prompts, tool execution inspection accordions, and Live AI / Replay badges
+- [x] Integrated Auditor Agent as a primary tab in `src/studio/StudioControlTower.tsx`
+- [x] Automated unit tests in `tests/unit/auditor.test.ts` verifying tool registry invariants, zero payment imports, and workspace-scoped tool execution
+- [x] Automated integration tests in `tests/integration/auditor-api.test.ts` verifying authentication, tool calling, and session isolation
+
+### Tested
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npm test tests/unit/auditor.test.ts tests/integration/auditor-api.test.ts` -> Passed (8/8 tests green)
+- Full test suite -> Passed (30 test files, 260/260 tests passing)
+
+### Issues / Decisions
+- Golden Rule 1 strictly preserved: static inspection test verifies zero imports from `src/rooms/execute` or PayPal client inside `src/studio/auditor/`.
+- All database queries strictly scoped by `workspace_id`.
+- Replay fallback provides fully functional deterministic audit summaries when `GEMINI_API_KEY` is not present or workspace AI cap is reached.
+- Embedded directly into Control Tower as an Auditor tab for seamless natural language interrogation of decisions, hash-chain events, and threat scans.
+
+### Next
+- All requested phases P11 through P19 are complete! Ready for end-to-end review and demo testing.

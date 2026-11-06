@@ -15,12 +15,14 @@ import {
   DollarSign,
   FileText,
   Sliders,
+  Bot,
 } from "lucide-react";
 import { AuthorityBudgetRing } from "./widgets/AuthorityBudgetRing";
 import { DecisionMixWidget } from "./widgets/DecisionMixWidget";
 import { BlockedAttemptsFeed } from "./widgets/BlockedAttemptsFeed";
 import { ChainIntegrityBadge } from "./widgets/ChainIntegrityBadge";
 import { LedgerGridWidget } from "./widgets/LedgerGridWidget";
+import { AuditorChat } from "./auditor/AuditorChat";
 
 // Dynamically import AgStudio with SSR disabled for Next.js App Router
 const AgStudio = dynamic(
@@ -56,7 +58,7 @@ export function StudioControlTower() {
   const [data, setData] = useState<StudioDataResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "studio" | "ledger" | "proposals">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "studio" | "ledger" | "auditor">("dashboard");
 
   // Cross-filtering states
   const [decisionFilter, setDecisionFilter] = useState<"ALLOW" | "REQUIRE_APPROVAL" | "DENY" | null>(null);
@@ -190,6 +192,18 @@ export function StudioControlTower() {
         </button>
 
         <button
+          onClick={() => setActiveTab("auditor")}
+          className={`px-4 py-2 rounded-input text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+            activeTab === "auditor"
+              ? "bg-primary text-primary-foreground shadow"
+              : "text-muted-foreground hover:text-ink hover:bg-muted"
+          }`}
+        >
+          <Bot className="w-3.5 h-3.5" />
+          Auditor Agent (PRD §10.4, P19)
+        </button>
+
+        <button
           onClick={() => setActiveTab("studio")}
           className={`px-4 py-2 rounded-input text-xs font-semibold transition-colors flex items-center gap-1.5 ${
             activeTab === "studio"
@@ -257,7 +271,14 @@ export function StudioControlTower() {
         </div>
       )}
 
-      {/* Tab 2: Native AG Studio Component */}
+      {/* Tab 2: Auditor Agent Framework Chat */}
+      {activeTab === "auditor" && (
+        <div className="space-y-4">
+          <AuditorChat />
+        </div>
+      )}
+
+      {/* Tab 3: Native AG Studio Component */}
       {activeTab === "studio" && (
         <div className="rounded-card border border-border bg-surface overflow-hidden shadow-sm">
           <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
@@ -288,7 +309,7 @@ export function StudioControlTower() {
         </div>
       )}
 
-      {/* Tab 3: Detailed Ledger View */}
+      {/* Tab 4: Detailed Ledger View */}
       {activeTab === "ledger" && (
         <LedgerGridWidget
           events={data?.ledger || []}
