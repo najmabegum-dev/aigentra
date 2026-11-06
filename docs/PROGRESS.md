@@ -523,3 +523,33 @@
 
 ### Next
 - All requested phases P11 through P19 are complete! Ready for end-to-end review and demo testing.
+
+
+---
+
+## Phase 20: Fix PGlite Bundling in Next.js & HTTP Workspace Creation
+- Status: Done
+- Branch: fix/pglite-next-config
+- PR / Tag: #20 / fix-pglite-bundling
+
+### Checklist
+- [x] Configured `experimental.serverComponentsExternalPackages: ['@electric-sql/pglite']` in `next.config.mjs`
+- [x] Deleted `.next` build cache and restarted dev server
+- [x] Verified `POST /api/workspaces` returns HTTP 200 with signed session cookie and seeded policy
+- [x] Added automated route integration test `tests/integration/workspaces-route.test.ts`
+- [x] Added real HTTP script `scripts/create-workspace.mjs` and `"workspace:create"` npm script
+- [x] Added development fallback secret in `src/lib/session.ts` for non-production environments without `.env`
+
+### Tested
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run workspace:create` -> Passed (Real HTTP POST to http://localhost:3000/api/workspaces returned HTTP 200 OK)
+- `curl.exe -i -X POST http://localhost:3000/api/workspaces` -> Passed (`HTTP/1.1 200 OK`, signed session cookie set, `ok: true`)
+- `npm test tests/integration/workspaces-route.test.ts` -> Passed (1/1 test green)
+- Full test suite (`npm test`) -> Passed (33 test files, 269/269 tests green)
+
+### Issues / Decisions
+- Next.js Webpack bundler shims standard Node globals and breaks `@electric-sql/pglite` path resolution (`TypeError ERR_INVALID_ARG_TYPE: "path" must be a string, Buffer or URL, received an instance of URL`). Externalizing `@electric-sql/pglite` via `serverComponentsExternalPackages` ensures Node.js loads PGlite natively without bundling artifacts.
+- Provided fallback for non-production environments in `src/lib/session.ts` so developers can start and test fresh clones without manual `.env` file requirements.
+
+### Next
+- End-to-end user testing and demonstration.

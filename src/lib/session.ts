@@ -22,6 +22,9 @@ function resolveSecret(customSecret?: string): string {
   if (fallback && fallback.length >= 32) {
     return fallback;
   }
+  if (process.env.NODE_ENV !== "production") {
+    return "dev_default_session_secret_at_least_32_characters_long";
+  }
   throw new Error("SESSION_SECRET must be configured and at least 32 characters long.");
 }
 
