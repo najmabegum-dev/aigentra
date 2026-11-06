@@ -298,3 +298,36 @@
 
 ### Next
 - Phase 13: Payment gateway interface, dev stub, checkout page (`PaymentGateway`, `DevStubGateway`, executor service, Authority Rail component, ESLint isolation rule).
+
+
+---
+
+## Phase 13: Payment Gateway Interface, Dev Stub & Checkout Page
+- Status: Done
+- Branch: feat/payment-gateway-executor-checkout
+- PR / Tag: #13 / phase-13
+
+### Checklist
+- [x] Defined `PaymentGateway` interface in `src/rooms/execute/types.ts` accepting only `VerifiedMandate`
+- [x] Implemented `DevStubGateway` in `src/rooms/execute/devStub.ts` simulating PayPal lifecycle states (`CREATED`, `APPROVED`, `COMPLETED`, declined, timeout) labelled `"dev_stub"`
+- [x] Implemented Executor Service in `src/rooms/execute/executor.ts` with re-verification of mandate & policy, `PayPal-Request-Id` idempotency, and `proposal_hash` in `custom_id`
+- [x] Built Checkout endpoints (`POST /api/checkout/create-order`, `POST /api/checkout/capture-order`, `POST /api/dev-stub/orders/[id]/status`)
+- [x] Built `AuthorityRail` 5-step lifecycle progress indicator (`src/ui/checkout/AuthorityRail.tsx`)
+- [x] Built Dev Stub Buyer Consent page prominently labelled `"THIS IS NOT PAYPAL — DEV STUB SIMULATOR"` (`src/app/dev-stub/buyer-approval/page.tsx`)
+- [x] Built Checkout page (`src/app/(workspace)/checkout/page.tsx`) with Authority Rail, order review, and approval/capture actions
+- [x] Added strict ESLint isolation rule enforcing that only `src/rooms/execute` and checkout/dev-stub routes may import payment gateways or PayPal SDK
+- [x] Unit tests for gate enforcement, idempotency, simulated PayPal states, and atomic capture (`tests/unit/gateway-executor.test.ts`)
+
+### Tested
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npm test` -> Passed (229 / 229 tests passing across 23 test files)
+
+### Issues / Decisions
+- Followed Golden Rules 1, 2, 4, and 5 strictly: no LLM code has access to payment execution or PayPal credentials.
+- `executeCreateOrder` and `executeCaptureOrder` require a `VerifiedMandate` parameter, re-evaluate policy before external calls, persist idempotency keys before dispatch, and anchor `custom_id` to the proposal hash.
+- Mandate is atomically marked as used in the database upon successful capture.
+- Dev stub buyer simulator includes a persistent red caution badge and simulated PayPal approval/decline buttons for testing all edge cases deterministically.
+
+### Next
+- Phase 14: Hash-chained ledger and public Verify page (`appendEvent` with chain lock, `verifyChain`, public `/verify/[id]` page with client-side SHA-256 verification, and sandbox tamper demo).

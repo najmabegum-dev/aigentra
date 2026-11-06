@@ -6,8 +6,15 @@
       {
         "patterns": [
           {
-            "group": ["**/rooms/execute", "@/rooms/execute"],
-            "message": "AGENTS.md Violation: Execute room cannot be imported directly. It accepts only a VerifiedMandate."
+            "group": [
+              "**/rooms/execute",
+              "@/rooms/execute",
+              "**/rooms/execute/**",
+              "@/rooms/execute/**",
+              "@paypal/paypal-server-sdk",
+              "@paypal/*"
+            ],
+            "message": "AGENTS.md Violation: Only src/rooms/execute may import payment gateways, PayPal SDKs, or execute room internals."
           }
         ]
       }
@@ -15,7 +22,7 @@
   },
   "overrides": [
     {
-      "files": ["src/rooms/execute/**"],
+      "files": ["src/rooms/execute/**", "src/app/api/checkout/**", "src/app/api/dev-stub/**", "tests/**"],
       "rules": {
         "no-restricted-imports": "off"
       }
@@ -28,8 +35,15 @@
           {
             "patterns": [
               {
-                "group": ["**/rooms/execute/**", "@/rooms/execute/**", "**/rooms/execute", "@/rooms/execute"],
-                "message": "AGENTS.md Violation: Propose room is forbidden from importing from the Execute room."
+                "group": [
+                  "**/rooms/execute/**",
+                  "@/rooms/execute/**",
+                  "**/rooms/execute",
+                  "@/rooms/execute",
+                  "@paypal/paypal-server-sdk",
+                  "@paypal/*"
+                ],
+                "message": "AGENTS.md Golden Rule 1: Propose room is forbidden from importing from the Execute room or PayPal SDK."
               }
             ]
           }
