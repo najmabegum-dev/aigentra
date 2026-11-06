@@ -78,6 +78,11 @@ export function centsToPayPalString(cents: number): string {
 }
 
 /**
+ * Formats integer cents to display decimal string (alias for centsToPayPalString).
+ */
+export const formatMoney = centsToPayPalString;
+
+/**
  * Parses a decimal string (e.g. "84.99", "84.9", "84") into integer cents without floating point arithmetic.
  */
 export function parseStringToCents(amountStr: string): number {

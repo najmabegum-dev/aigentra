@@ -10,9 +10,13 @@ function resolveSecret(customSecret?: string): string {
   if (customSecret && customSecret.length >= 32) {
     return customSecret;
   }
-  const env = getEnv();
-  if (env?.SESSION_SECRET && env.SESSION_SECRET.length >= 32) {
-    return env.SESSION_SECRET;
+  try {
+    const env = getEnv();
+    if (env?.SESSION_SECRET && env.SESSION_SECRET.length >= 32) {
+      return env.SESSION_SECRET;
+    }
+  } catch {
+    // getEnv() may throw in test environments where optional or unrelated env vars are omitted
   }
   const fallback = process.env.SESSION_SECRET;
   if (fallback && fallback.length >= 32) {

@@ -236,7 +236,35 @@
   - `tests/integration/workspaces-seed.test.ts` (1 test)
 
 ### 3. What is Next
-- Task 11: Authority Mandate issuing and cryptographic verification (`src/rooms/authorize/mandates.ts`) using EdDSA / Ed25519 JWS (`jose`), with atomic consumption in database transactions.
+- Task 11: Agent Workspace UI, proposals service, Decision Card, and policy evaluation flow.
 
 ### 4. Known Issues & Blockers
 - None.
+
+---
+
+## Phase 11: Agent Workspace & Proposals
+- Status: Done
+- Branch: feat/agent-workspace-proposals
+- PR / Tag: #11 / phase-11
+
+### Checklist
+- [x] Server-side proposal builder recomputing prices and RFC 8785 hash (`src/rooms/propose/proposalService.ts`)
+- [x] Proposals API routes with tenant isolation (`POST /api/proposals`, `GET /api/proposals`, `GET /api/proposals/[id]`)
+- [x] Agent Workspace UI with chat input, chips, catalog cards, and live cart (`src/ui/agent-workspace/AgentWorkspace.tsx`)
+- [x] Decision Card UI showing verdict, reason codes, rule breakdown, and canonical hash chip (`src/ui/agent-workspace/DecisionCard.tsx`)
+- [x] Unit and integration tests covering price manipulation defense, hash integrity, and IDOR isolation (`tests/unit/proposals.test.ts`, `tests/integration/proposals-api.test.ts`)
+
+### Tested
+- `npm run lint` -> Passed (0 warnings, 0 errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npm test` -> Passed (211 / 211 tests passing across 20 test files)
+
+### Issues / Decisions
+- Enforced Golden Rule 5: client unit prices are strictly discarded; all item prices are looked up against server catalog data and total cents are recomputed on the server.
+- Guaranteed RFC 8785 canonical JSON hash generation on proposals.
+- Decision Card renders full evaluation rule results and verdict badge (`ALLOW`, `REQUIRE_APPROVAL`, `DENY`).
+
+### Next
+- Phase 12: Mandates and Approval Centre (`src/rooms/authorize/mandates.ts`, Ed25519 signing with `jose`, single-use atomic consumption, Approval Centre UI).
+
