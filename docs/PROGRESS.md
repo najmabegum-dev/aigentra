@@ -268,3 +268,33 @@
 ### Next
 - Phase 12: Mandates and Approval Centre (`src/rooms/authorize/mandates.ts`, Ed25519 signing with `jose`, single-use atomic consumption, Approval Centre UI).
 
+
+
+---
+
+## Phase 12: Mandates and Approval Centre
+- Status: Done
+- Branch: feat/mandates-approval-centre
+- PR / Tag: #12 / phase-12
+
+### Checklist
+- [x] Ed25519 key loading & signing with `jose` (`src/rooms/authorize/mandates.ts`)
+- [x] Branded `VerifiedMandate` type barrier separating authorize from execute (`src/rooms/authorize/types.ts`)
+- [x] Single-use atomic consumption using SQL `UPDATE ... WHERE used_at IS NULL RETURNING *` (`src/rooms/authorize/mandates.ts`)
+- [x] Approval queue, approve, reject, supersede, and auto-mandate endpoints (`/api/approvals`, `/api/proposals/[id]/{approve,reject,supersede,mandate}`)
+- [x] Approval Centre UI with side-by-side proposal vs policy comparison, action buttons, and expiry countdown (`src/ui/approvals/ApprovalCentre.tsx`, `src/app/(workspace)/approvals/page.tsx`)
+- [x] Unit and integration tests for cryptographic verification, replay rejection, tamper detection, and parallel atomic race conditions (`tests/unit/mandates.test.ts`, `tests/integration/approvals-api.test.ts`)
+
+### Tested
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npm test` -> Passed (225 / 225 tests passing across 22 test files)
+
+### Issues / Decisions
+- Followed Golden Rule 1 & 2: `VerifiedMandate` branded type is created exclusively by `verifyMandate()`, ensuring execute functions can never be invoked with raw or unverified tokens.
+- Mandates expire after 15 minutes by default (`ttlSeconds: 900`).
+- Atomic consumption in database query guarantees exactly one winner under parallel requests; replay requests fail immediately with `MANDATE_ALREADY_USED`.
+- Editing a proposal supersedes it and invalidates any active mandate.
+
+### Next
+- Phase 13: Payment gateway interface, dev stub, checkout page (`PaymentGateway`, `DevStubGateway`, executor service, Authority Rail component, ESLint isolation rule).
