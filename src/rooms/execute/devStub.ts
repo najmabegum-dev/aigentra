@@ -23,6 +23,14 @@ interface SimulatedOrder {
 // In-memory store of simulated DevStub PayPal orders
 const simulatedOrdersStore = new Map<string, SimulatedOrder>();
 
+import {
+  incrementGatewayCallCount,
+  getGatewayCallCount,
+  resetGatewayCallCount,
+} from "@/lib/gatewayCounter";
+
+export { getGatewayCallCount, resetGatewayCallCount };
+
 /**
  * DevStubGateway simulates PayPal Orders v2 deterministically.
  * PRD §8 & F6.
@@ -49,6 +57,7 @@ export class DevStubGateway implements PaymentGateway {
     mandate: VerifiedMandate,
     input: GatewayCreateOrderInput
   ): Promise<GatewayOrderResult> {
+    incrementGatewayCallCount();
     const orderId = `DEV-ORDER-${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
     const approveUrl = `/dev-stub/buyer-approval?order_id=${orderId}&token=${encodeURIComponent(
       mandate.rawToken
@@ -120,6 +129,7 @@ export class DevStubGateway implements PaymentGateway {
     orderId: string,
     requestId: string
   ): Promise<GatewayCaptureResult> {
+    incrementGatewayCallCount();
     const order = simulatedOrdersStore.get(orderId);
     if (!order) {
       throw new Error(`DevStub order not found for capture: ${orderId}`);
