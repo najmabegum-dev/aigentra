@@ -362,3 +362,32 @@
 
 ### Next
 - Phase 15: Webhook inbox with a verifier interface (`POST /api/webhooks/paypal` raw body, `WebhookVerifier`, `DevStubVerifier`, deduping by event ID, amount and custom_id drift comparison).
+
+
+---
+
+## Phase 15: Webhook Inbox with Verifier Interface
+- Status: Done
+- Branch: feat/webhooks-reconciliation
+- PR / Tag: #15 / phase-15
+
+### Checklist
+- [x] Defined `WebhookVerifier` interface and transmission headers types in `src/rooms/verify/webhooks/types.ts`
+- [x] Implemented `DevStubVerifier` with local HMAC-SHA256 signature verification and marked TODO for `PayPalVerifier` (P21) in `src/rooms/verify/webhooks/verifier.ts`
+- [x] Implemented webhook processor in `src/rooms/verify/webhooks/processor.ts` reading raw body first, deduplicating by `paypal_event_id` primary key, comparing `amount` and `custom_id` against the mandate (`CONFIRMED` vs `DRIFT_FLAGGED`), and appending hash-chained ledger events
+- [x] Implemented `POST /api/webhooks/paypal` raw-body reader endpoint (`src/app/api/webhooks/paypal/route.ts`)
+- [x] Unit tests for signature verification, duplicate deduplication, capture confirmation, amount/custom_id drift detection, and security events (`tests/unit/webhooks.test.ts`)
+- [x] Integration tests for `POST /api/webhooks/paypal` route verification and fund reconciliation (`tests/integration/webhooks-api.test.ts`)
+
+### Tested
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npm test` -> Passed (244 / 244 tests passing across 27 test files)
+
+### Issues / Decisions
+- Followed Golden Rule 7: Raw request body is read with `request.text()` before any JSON parsing. Signatures are verified before any state change.
+- Deduplication: Primary-key conflict on `webhook_events.paypal_event_id` returns HTTP 200 immediately without modifying application state (PRD §8.3).
+- Fund confirmation: Only `PAYMENT.CAPTURE.COMPLETED` confirms funds; comparing custom_id to proposal hash and integer cents to authorized mandate prevents drift attacks. Any discrepancy marks `DRIFT_FLAGGED` and raises a security ledger event.
+
+### Next
+- Phase 16: Attack Lab (F10 & PRD §9.4 scenarios A1 to A7 with real engine, mandate, webhook, and verify modules, plus gateway request counter proving 0 payment calls).
