@@ -14,7 +14,13 @@ import {
   CheckCircle2,
   DollarSign,
   FileText,
+  Sliders,
 } from "lucide-react";
+import { AuthorityBudgetRing } from "./widgets/AuthorityBudgetRing";
+import { DecisionMixWidget } from "./widgets/DecisionMixWidget";
+import { BlockedAttemptsFeed } from "./widgets/BlockedAttemptsFeed";
+import { ChainIntegrityBadge } from "./widgets/ChainIntegrityBadge";
+import { LedgerGridWidget } from "./widgets/LedgerGridWidget";
 
 // Dynamically import AgStudio with SSR disabled for Next.js App Router
 const AgStudio = dynamic(
@@ -50,7 +56,11 @@ export function StudioControlTower() {
   const [data, setData] = useState<StudioDataResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"studio" | "ledger" | "proposals" | "decisions">("studio");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "studio" | "ledger" | "proposals">("dashboard");
+
+  // Cross-filtering states
+  const [decisionFilter, setDecisionFilter] = useState<"ALLOW" | "REQUIRE_APPROVAL" | "DENY" | null>(null);
+  const [entityFilter, setEntityFilter] = useState<string | null>(null);
 
   useEffect(() => {
     initStudioLicense();
@@ -105,12 +115,21 @@ export function StudioControlTower() {
 
   const hasLicenseKey = Boolean(process.env.NEXT_PUBLIC_AG_LICENSE_KEY);
 
-  const blockedCount = data?.decisions.filter((d) => d.decision === "DENY").length || 0;
-  const approvedCount = data?.decisions.filter((d) => d.decision === "ALLOW" || d.decision === "REQUIRE_APPROVAL").length || 0;
+  // Derived metrics
   const totalVolumeCents = data?.captures.reduce((acc, c) => acc + (c.amount_cents || 0), 0) || 0;
+  const reservedCents = data?.proposals
+    .filter((p) => p.state === "AUTHORIZED" || p.state === "ORDER_CREATED")
+    .reduce((acc, p) => acc + (p.total_cents || 0), 0) || 0;
+
+  // Filtered decisions for cross-filtering
+  const filteredDecisions = useMemo(() => {
+    if (!data?.decisions) return [];
+    if (!decisionFilter) return data.decisions;
+    return data.decisions.filter((d) => d.decision === decisionFilter);
+  }, [data?.decisions, decisionFilter]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-16">
       {/* Top Banner & Telemetry Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
@@ -156,59 +175,20 @@ export function StudioControlTower() {
         </div>
       )}
 
-      {/* Telemetry KPI Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="p-4 rounded-card border border-border bg-surface">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-muted-foreground uppercase">Ledger Chain Head</p>
-            <Lock className="w-4 h-4 text-status-allow" />
-          </div>
-          <p className="text-2xl font-bold text-ink mt-1 font-mono">
-            #{data?.counts.ledger || 0}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">SHA-256 Verified</p>
-        </div>
-
-        <div className="p-4 rounded-card border border-border bg-surface">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-muted-foreground uppercase">Shopping Proposals</p>
-            <Activity className="w-4 h-4 text-primary" />
-          </div>
-          <p className="text-2xl font-bold text-ink mt-1">
-            {data?.counts.proposals || 0}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">Agent Intentions</p>
-        </div>
-
-        <div className="p-4 rounded-card border border-border bg-surface">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-muted-foreground uppercase">Policy Enforcements</p>
-            <ShieldCheck className="w-4 h-4 text-status-approval" />
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-2xl font-bold text-status-allow">{approvedCount}</span>
-            <span className="text-sm text-muted-foreground">/</span>
-            <span className="text-lg font-bold text-status-deny">{blockedCount} Denied</span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">Zero tool leaks</p>
-        </div>
-
-        <div className="p-4 rounded-card border border-border bg-surface">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-muted-foreground uppercase">PayPal Settled Volume</p>
-            <DollarSign className="w-4 h-4 text-status-allow" />
-          </div>
-          <p className="text-2xl font-bold text-ink mt-1">
-            ${(totalVolumeCents / 100).toFixed(2)}
-          </p>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {data?.counts.captures || 0} Captures Confirmed
-          </p>
-        </div>
-      </div>
-
-      {/* Tabs */}
+      {/* Tabs Row */}
       <div className="flex items-center gap-2 border-b border-border pb-2">
+        <button
+          onClick={() => setActiveTab("dashboard")}
+          className={`px-4 py-2 rounded-input text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+            activeTab === "dashboard"
+              ? "bg-primary text-primary-foreground shadow"
+              : "text-muted-foreground hover:text-ink hover:bg-muted"
+          }`}
+        >
+          <Sliders className="w-3.5 h-3.5" />
+          Saved Dashboard Layout (PRD §10.4)
+        </button>
+
         <button
           onClick={() => setActiveTab("studio")}
           className={`px-4 py-2 rounded-input text-xs font-semibold transition-colors flex items-center gap-1.5 ${
@@ -218,7 +198,7 @@ export function StudioControlTower() {
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
-          AG Studio Dashboard
+          AG Studio Component View
         </button>
 
         <button
@@ -230,35 +210,54 @@ export function StudioControlTower() {
           }`}
         >
           <Lock className="w-3.5 h-3.5" />
-          Ledger Table ({data?.counts.ledger || 0})
-        </button>
-
-        <button
-          onClick={() => setActiveTab("proposals")}
-          className={`px-4 py-2 rounded-input text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-            activeTab === "proposals"
-              ? "bg-primary text-primary-foreground shadow"
-              : "text-muted-foreground hover:text-ink hover:bg-muted"
-          }`}
-        >
-          <FileText className="w-3.5 h-3.5" />
-          Proposals ({data?.counts.proposals || 0})
-        </button>
-
-        <button
-          onClick={() => setActiveTab("decisions")}
-          className={`px-4 py-2 rounded-input text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-            activeTab === "decisions"
-              ? "bg-primary text-primary-foreground shadow"
-              : "text-muted-foreground hover:text-ink hover:bg-muted"
-          }`}
-        >
-          <ShieldCheck className="w-3.5 h-3.5" />
-          Decisions ({data?.counts.decisions || 0})
+          Full Audit Trail ({data?.counts.ledger || 0})
         </button>
       </div>
 
-      {/* Tab 1: AG Studio Component Canvas */}
+      {/* Tab 1: Default Saved Dashboard Layout with 4 Custom Widgets & Grid */}
+      {activeTab === "dashboard" && (
+        <div className="space-y-6">
+          {/* Top Row: 3 Custom Widgets */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Widget 1: Authority Budget Ring */}
+            <AuthorityBudgetRing
+              spentCents={totalVolumeCents}
+              reservedCents={reservedCents}
+              dailyCapCents={20000}
+              currency="USD"
+            />
+
+            {/* Widget 2: Decision Mix */}
+            <DecisionMixWidget
+              decisions={data?.decisions || []}
+              selectedFilter={decisionFilter}
+              onSelectFilter={setDecisionFilter}
+            />
+
+            {/* Widget 4: Chain Integrity Badge */}
+            <ChainIntegrityBadge
+              workspaceId={data?.workspaceId || "demo"}
+              chainLength={data?.counts.ledger || 0}
+              lastVerifiedAt={new Date().toLocaleTimeString()}
+            />
+          </div>
+
+          {/* Middle Row: Blocked Attempts Feed with 'injected text' badge */}
+          <BlockedAttemptsFeed
+            attempts={data?.decisions || []}
+          />
+
+          {/* Bottom Row: Ledger Grid with custom status cells, grouping and cross-filtering */}
+          <LedgerGridWidget
+            events={data?.ledger || []}
+            workspaceId={data?.workspaceId || "demo"}
+            filterEntityType={entityFilter}
+            onFilterEntityType={setEntityFilter}
+          />
+        </div>
+      )}
+
+      {/* Tab 2: Native AG Studio Component */}
       {activeTab === "studio" && (
         <div className="rounded-card border border-border bg-surface overflow-hidden shadow-sm">
           <div className="px-4 py-3 border-b border-border bg-muted/30 flex items-center justify-between">
@@ -269,11 +268,11 @@ export function StudioControlTower() {
               </span>
             </div>
             <span className="text-[11px] text-muted-foreground">
-              Connected sources: ledger, proposals, decisions, captures
+              Multi-source data pipeline: ledger, proposals, decisions, captures
             </span>
           </div>
 
-          <div className="h-[620px] w-full p-2 bg-surface">
+          <div className="h-[640px] w-full p-2 bg-surface">
             {studioDataConfig ? (
               <AgStudio
                 data={studioDataConfig as any}
@@ -289,138 +288,14 @@ export function StudioControlTower() {
         </div>
       )}
 
-      {/* Tab 2: Ledger Table View */}
+      {/* Tab 3: Detailed Ledger View */}
       {activeTab === "ledger" && (
-        <div className="rounded-card border border-border bg-surface overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-muted/40 text-muted-foreground uppercase font-medium border-b border-border">
-                <tr>
-                  <th className="px-4 py-2.5">Seq</th>
-                  <th className="px-4 py-2.5">Type</th>
-                  <th className="px-4 py-2.5">Actor</th>
-                  <th className="px-4 py-2.5">Event Hash</th>
-                  <th className="px-4 py-2.5">Source</th>
-                  <th className="px-4 py-2.5">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {data?.ledger.map((evt) => (
-                  <tr key={evt.id} className="hover:bg-muted/10 font-mono">
-                    <td className="px-4 py-3 font-bold text-ink">#{evt.seq}</td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-muted text-ink">
-                        {evt.type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{evt.actor}</td>
-                    <td className="px-4 py-3 text-muted-foreground truncate max-w-xs" title={evt.event_hash}>
-                      {evt.event_hash}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        evt.source === "live"
-                          ? "bg-status-allow/15 text-status-allow"
-                          : "bg-status-approval/15 text-status-approval"
-                      }`}>
-                        {evt.source}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground font-sans">
-                      {new Date(evt.created_at).toLocaleTimeString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 3: Proposals View */}
-      {activeTab === "proposals" && (
-        <div className="rounded-card border border-border bg-surface overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-muted/40 text-muted-foreground uppercase font-medium border-b border-border">
-                <tr>
-                  <th className="px-4 py-2.5">Proposal ID</th>
-                  <th className="px-4 py-2.5">Total</th>
-                  <th className="px-4 py-2.5">State</th>
-                  <th className="px-4 py-2.5">Items</th>
-                  <th className="px-4 py-2.5">Proposal Hash</th>
-                  <th className="px-4 py-2.5">Source</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {data?.proposals.map((prop) => (
-                  <tr key={prop.id} className="hover:bg-muted/10">
-                    <td className="px-4 py-3 font-mono font-bold text-ink">{prop.id}</td>
-                    <td className="px-4 py-3 font-semibold text-ink">{prop.total_formatted}</td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded font-mono text-[11px] font-semibold bg-muted text-ink">
-                        {prop.state}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{prop.items_count} item(s)</td>
-                    <td className="px-4 py-3 font-mono text-muted-foreground truncate max-w-xs">
-                      {prop.proposal_hash}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-muted text-muted-foreground">
-                        {prop.source}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 4: Decisions View */}
-      {activeTab === "decisions" && (
-        <div className="rounded-card border border-border bg-surface overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-muted/40 text-muted-foreground uppercase font-medium border-b border-border">
-                <tr>
-                  <th className="px-4 py-2.5">Decision ID</th>
-                  <th className="px-4 py-2.5">Proposal</th>
-                  <th className="px-4 py-2.5">Verdict</th>
-                  <th className="px-4 py-2.5">Reason Codes</th>
-                  <th className="px-4 py-2.5">Timestamp</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {data?.decisions.map((dec) => (
-                  <tr key={dec.id} className="hover:bg-muted/10">
-                    <td className="px-4 py-3 font-mono font-bold text-ink">{dec.id}</td>
-                    <td className="px-4 py-3 font-mono text-muted-foreground">{dec.proposal_id}</td>
-                    <td className="px-4 py-3">
-                      <span className={`px-2 py-0.5 rounded font-bold ${
-                        dec.decision === "ALLOW"
-                          ? "bg-status-allow/15 text-status-allow"
-                          : dec.decision === "REQUIRE_APPROVAL"
-                          ? "bg-status-approval/15 text-status-approval"
-                          : "bg-status-deny/15 text-status-deny"
-                      }`}>
-                        {dec.decision}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-muted-foreground">
-                      {Array.isArray(dec.reason_codes) ? dec.reason_codes.join(", ") : String(dec.reason_codes)}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {new Date(dec.created_at).toLocaleTimeString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <LedgerGridWidget
+          events={data?.ledger || []}
+          workspaceId={data?.workspaceId || "demo"}
+          filterEntityType={entityFilter}
+          onFilterEntityType={setEntityFilter}
+        />
       )}
     </div>
   );

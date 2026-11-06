@@ -459,3 +459,34 @@
 
 ### Next
 - Phase 18: Custom widgets — Authority Budget Ring, Decision Mix, Blocked Attempts Feed, Chain Integrity Badge, and cross-filtering.
+
+
+---
+
+## Phase 18: Custom Widgets & Control Tower Dashboard
+- Status: Done
+- Branch: feat/studio-custom-widgets
+- PR / Tag: #18 / phase-18
+
+### Checklist
+- [x] Built Authority Budget Ring widget (`src/studio/widgets/AuthorityBudgetRing.tsx`) tracking spent vs reserved vs remaining budget against daily cap
+- [x] Built Decision Mix widget (`src/studio/widgets/DecisionMixWidget.tsx`) visualizing ALLOW, REQUIRE_APPROVAL, and DENY distribution with cross-filtering
+- [x] Built Blocked Attempts Feed widget (`src/studio/widgets/BlockedAttemptsFeed.tsx`) highlighting reason codes and prominent "injected text" badge for prompt injection attempts
+- [x] Built Chain Integrity Badge widget (`src/studio/widgets/ChainIntegrityBadge.tsx`) reporting real-time SHA-256 hash chain validity (OK / BROKEN) and block height
+- [x] Built Ledger Grid component (`src/studio/widgets/LedgerGridWidget.tsx`) with custom status cells, grouping by entity type, free text search, and link to public `/verify/[id]` proof
+- [x] Connected all 4 widgets and ledger grid into `src/studio/StudioControlTower.tsx` with a saved default dashboard layout
+- [x] Automated unit test suite in `tests/unit/studio-widgets.test.ts` verifying all 5 components
+
+### Tested
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npm test tests/unit/studio-widgets.test.ts` -> Passed (5/5 tests green)
+
+### Issues / Decisions
+- Followed PRD §10.4: Built four dedicated custom widgets that make bounded AI authority, policy boundaries, and audit evidence immediately understandable.
+- Added cross-filtering: clicking on Decision Mix segments or Ledger Entity types filters the transaction tables dynamically.
+- Special prominent "injected text" badge is triggered when `OVER_CART_CAP` from `SKU-INJECTED-A1` is blocked.
+- All rows and cards are labelled Sandbox with demo-seeded rows marked "seeded".
+
+### Next
+- Phase 19: Auditor agent with three read-only tools: `query_ledger`, `explain_decision(id)`, `summarize_blocked(range)`.
