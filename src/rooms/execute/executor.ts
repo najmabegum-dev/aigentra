@@ -16,6 +16,7 @@ import {
   PaymentGateway,
 } from "./types";
 import { DevStubGateway } from "./devStub";
+import { appendEvent } from "@/rooms/verify/ledger";
 
 // Cached gateway singleton
 let activeGateway: PaymentGateway | null = null;
@@ -214,6 +215,23 @@ export async function executeCreateOrder(
     })
     .where(eq(schema.proposals.id, proposal.id));
 
+  // Append hash-chained ledger event (Golden Rule 8)
+  await appendEvent({
+    workspaceId: mandate.workspaceId,
+    entityType: "order",
+    entityId: result.orderId,
+    type: "PAYPAL_ORDER_CREATED",
+    actor: "executor",
+    payload: {
+      order_id: result.orderId,
+      proposal_id: proposal.id,
+      proposal_hash: mandate.proposalHash,
+      amount_cents: proposal.totalCents,
+      currency: proposal.currency || "USD",
+      source: result.source,
+    },
+  });
+
   return result;
 }
 
@@ -289,6 +307,24 @@ export async function executeCaptureOrder(
       updatedAt: new Date(),
     })
     .where(eq(schema.proposals.id, mandate.proposalId));
+
+  // Append hash-chained ledger event (Golden Rule 8)
+  await appendEvent({
+    workspaceId: mandate.workspaceId,
+    entityType: "capture",
+    entityId: result.captureId,
+    type: "PAYPAL_ORDER_CAPTURED",
+    actor: "executor",
+    payload: {
+      capture_id: result.captureId,
+      order_id: orderId,
+      proposal_id: mandate.proposalId,
+      proposal_hash: mandate.proposalHash,
+      amount_cents: result.amountCents,
+      currency: result.currency || "USD",
+      status: result.status,
+    },
+  });
 
   return result;
 }

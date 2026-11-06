@@ -331,3 +331,34 @@
 
 ### Next
 - Phase 14: Hash-chained ledger and public Verify page (`appendEvent` with chain lock, `verifyChain`, public `/verify/[id]` page with client-side SHA-256 verification, and sandbox tamper demo).
+
+
+---
+
+## Phase 14: Hash-Chained Ledger & Public Verify Page
+- Status: Done
+- Branch: feat/ledger-verify-chain
+- PR / Tag: #14 / phase-14
+
+### Checklist
+- [x] Implemented `appendEvent` with workspace chain head locking via `SELECT ... FOR UPDATE`, RFC 8785 canonical serialization, and SHA-256 hash chaining (`src/rooms/verify/ledger.ts`)
+- [x] Implemented `verifyChain` detecting any sequence gap, broken hash link, or payload mutation (`src/rooms/verify/ledger.ts`)
+- [x] Wired real `appendEvent` calls into proposal creation, mandate issuance, approval, rejection, superseding, and PayPal order/capture execution
+- [x] Implemented public proof endpoints (`GET /api/verify/[id]`, `POST /api/verify/[id]` for sandbox tamper demo)
+- [x] Built public Verify page with client-side Web Crypto SHA-256 chain recomputation, Ed25519 public key display, and interactive Tamper Demo toggle (`src/app/verify/[id]/page.tsx`)
+- [x] Unit tests for genesis block, sequential hash chaining, single-field mutation detection, and concurrent locking gapless monotonicity (`tests/unit/ledger.test.ts`)
+- [x] Integration tests for public verify endpoint and tamper demonstration (`tests/integration/verify-api.test.ts`)
+
+### Tested
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npm test` -> Passed (237 / 237 tests passing across 25 test files)
+
+### Issues / Decisions
+- Followed Golden Rule 8: Every state change appends a hash-chained ledger event in the same transaction. The ledger is strictly append-only.
+- Formula enforced: `sha256(prev_hash + canonicalize(eventData))`. Genesis block starts at `seq = 1` with 64 zeros as `prev_hash`.
+- Recomputation happens natively inside the user's browser via Web Crypto API, providing cryptographic proof without trusting any intermediary server state.
+- Sandbox Tamper Demo allows one-click corruption of a stored event to visibly demonstrate how hash chaining instantly detects database modification (Threat A7).
+
+### Next
+- Phase 15: Webhook inbox with a verifier interface (`POST /api/webhooks/paypal` raw body, `WebhookVerifier`, `DevStubVerifier`, deduping by event ID, amount and custom_id drift comparison).

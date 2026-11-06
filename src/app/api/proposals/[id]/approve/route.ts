@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { issueMandate } from "@/rooms/authorize/mandates";
+import { appendEvent } from "@/rooms/verify/ledger";
 import { ProposalItem } from "@/rooms/authorize/types";
 
 export const dynamic = "force-dynamic";
@@ -88,6 +89,20 @@ export async function POST(
       })
       .where(eq(schema.proposals.id, proposal.id))
       .returning();
+
+    // Append hash-chained ledger event (Golden Rule 8)
+    await appendEvent({
+      workspaceId,
+      entityType: "proposal",
+      entityId: proposal.id,
+      type: "PROPOSAL_APPROVED",
+      actor: "human",
+      payload: {
+        proposal_id: proposal.id,
+        mandate_jti: issued.jti,
+        amount_cents: proposal.totalCents,
+      },
+    });
 
     return NextResponse.json({
       success: true,

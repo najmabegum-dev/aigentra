@@ -8,6 +8,7 @@ import {
   VerifiedMandate,
   ExecutionReasonCode,
 } from "./types";
+import { appendEvent } from "@/rooms/verify/ledger";
 
 export class MandateVerificationError extends Error {
   readonly code: ExecutionReasonCode;
@@ -147,6 +148,24 @@ export async function issueMandate(
     usedAt: null,
   });
 
+  // Append hash-chained ledger event (Golden Rule 8)
+  await appendEvent({
+    workspaceId: params.workspaceId,
+    entityType: "mandate",
+    entityId: jti,
+    type: "MANDATE_ISSUED",
+    actor: params.grant === "POLICY_AUTO" ? "policy_engine" : "human",
+    payload: {
+      jti,
+      proposal_id: params.proposalId,
+      proposal_hash: params.proposalHash,
+      amount_cents: params.amountCents,
+      currency: params.currency || "USD",
+      grant: params.grant,
+      expires_at: expiresAt.toISOString(),
+    },
+  });
+
   return {
     jti,
     token,
@@ -260,6 +279,18 @@ export async function consumeMandate(
     .returning();
 
   if (consumed.length > 0) {
+    await appendEvent({
+      workspaceId: mandate.workspaceId,
+      entityType: "mandate",
+      entityId: mandate.jti,
+      type: "MANDATE_CONSUMED",
+      actor: "executor",
+      payload: {
+        jti: mandate.jti,
+        proposal_id: mandate.proposalId,
+        consumed_at: now.toISOString(),
+      },
+    });
     return {
       success: true,
       mandate: consumed[0],

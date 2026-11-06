@@ -6,6 +6,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { buildProposalFromItems, formatDecisionCard } from "@/rooms/propose/proposalService";
 import { evaluate } from "@/rooms/authorize/engine";
 import { PolicyRuleDefinition, SpendState } from "@/rooms/authorize/types";
+import { appendEvent } from "@/rooms/verify/ledger";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,27 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           reasonCodes: evaluation.reason_codes,
         });
       }
+
+      // Append hash-chained ledger event in the same transaction (Golden Rule 8)
+      await appendEvent(
+        {
+          workspaceId,
+          entityType: "proposal",
+          entityId: proposal.id,
+          type: "PROPOSAL_CREATED",
+          actor: "agent",
+          payload: {
+            proposal_id: proposal.id,
+            proposal_hash: proposal.proposal_hash,
+            total_cents: proposal.total_cents,
+            currency: "USD",
+            decision: evaluation.decision,
+            reason_codes: evaluation.reason_codes,
+            state: initialState,
+          },
+        },
+        tx
+      );
     });
 
     // 7. Format structured DecisionCard presentation

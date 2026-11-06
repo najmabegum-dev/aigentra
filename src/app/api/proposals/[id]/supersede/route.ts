@@ -3,6 +3,7 @@ import { parseWorkspaceCookie } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
+import { appendEvent } from "@/rooms/verify/ledger";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,19 @@ export async function POST(
       })
       .where(eq(schema.proposals.id, proposal.id))
       .returning();
+
+    // Append hash-chained ledger event (Golden Rule 8)
+    await appendEvent({
+      workspaceId,
+      entityType: "proposal",
+      entityId: proposal.id,
+      type: "PROPOSAL_SUPERSEDED",
+      actor: "human",
+      payload: {
+        proposal_id: proposal.id,
+        state: "SUPERSEDED",
+      },
+    });
 
     return NextResponse.json({
       success: true,
