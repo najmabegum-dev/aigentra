@@ -11,11 +11,13 @@
     "test": "vitest run",
     "verify:intents": "vite-node scripts/verify-golden-intents.ts",
     "db:migrate": "vite-node scripts/migrate.ts",
-    "workspace:create": "node scripts/create-workspace.mjs"
+    "workspace:create": "node scripts/create-workspace.mjs",
+    "spike:paypal": "node scripts/spike-paypal.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.112",
     "@electric-sql/pglite": "^0.2.14",
+    "@paypal/paypal-server-sdk": "^2.5.0",
     "ag-studio-react": "^3.1.0",
     "ai": "^7.0.163",
     "canonicalize": "^5.1.0",

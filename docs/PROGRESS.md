@@ -582,4 +582,32 @@
 - Concurrency & PGlite locking: On Windows, parallel test workers accessing the same `.data` directory can cause PGlite init collisions. Adding `fileParallelism: false` ensures sequential test file execution and deterministic ledger hash chaining.
 
 ### Next
-- Final end-to-end review and demo preparation.
+- Phase 22: PayPal Sandbox Spike (P20 throwaway).
+
+
+---
+
+## Phase 22: PayPal Sandbox Spike (P20 Throwaway)
+- Status: Done
+- Branch: fix/pglite-next-config
+
+### Checklist
+- [x] Installed `@paypal/paypal-server-sdk` (v2.5.0)
+- [x] Created throwaway CLI spike script `scripts/spike-paypal.mjs` and npm script `"spike:paypal"`
+- [x] Created throwaway API route `src/app/api/spike/route.ts` supporting order creation and server-side capture
+- [x] Created throwaway UI test page at `/spike` (`src/app/spike/page.tsx`) with sandbox buyer consent and capture flows
+- [x] Tested live order creation against PayPal Sandbox returning live order ID and approval link
+- [x] Verified zero secret logging and enforced isolation in `.eslintrc.json`
+
+### Tested
+- `node scripts/spike-paypal.mjs` -> Passed (Generated live Sandbox Order `03197678BP509731G`, status `PAYER_ACTION_REQUIRED`, approve URL returned)
+- `POST /api/spike` (`action: "create"`) -> Passed (Generated live Sandbox Order `1BV07891P1121570F`, status `PAYER_ACTION_REQUIRED`)
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+
+### Issues / Decisions
+- Followed Golden Rule 10: Secrets never leave the server. Credentials are loaded from gitignored `.env.local`, never logged, committed, or rendered in UI.
+- All files, routes, and UI banners are explicitly marked `THROWAWAY SPIKE - NOT FOR PRODUCTION`.
+
+### Next
+- Live buyer sandbox approval and server-side capture verification.
