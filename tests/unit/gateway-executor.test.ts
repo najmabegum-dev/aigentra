@@ -262,6 +262,106 @@ describe("Payment Gateway Interface & Executor Service (PRD §8, §5.2)", () => 
     ).rejects.toThrow("MANDATE_ALREADY_USED");
   });
 
+  it("records CAPTURE_FAILED, logs ledger event, and consumes mandate atomically when capture fails (PRD §8.2 step 5)", async () => {
+    const failPropId = "prop_capture_fail_" + Math.random().toString(36).slice(2, 9);
+    const failHash = "fail_hash_" + Math.random().toString(36).slice(2, 9).padEnd(64, "0");
+
+    await db.insert(schema.proposals).values({
+      id: failPropId,
+      workspaceId: wsId,
+      itemsJson: [
+        {
+          sku: "SKU-KEYBOARD-01",
+          title: "Keychron K2",
+          unit_price_cents: 8499,
+          quantity: 1,
+          merchant_domain: "keychron.com",
+          price_fetched_at: new Date().toISOString(),
+          server_price_cents: 8499,
+        },
+      ],
+      totalCents: 8499,
+      currency: "USD",
+      proposalHash: failHash,
+      state: "BUYER_APPROVED",
+      policyVersionId,
+    });
+
+    const issued = await issueMandate({
+      workspaceId: wsId,
+      proposalId: failPropId,
+      proposalHash: failHash,
+      policyVersionId,
+      amountCents: 8499,
+      currency: "USD",
+      merchantDomains: ["keychron.com"],
+      grant: "HUMAN_APPROVAL",
+    });
+
+    const mandate = await verifyMandate({
+      token: issued.token,
+      expectedProposalHash: failHash,
+    });
+
+    const gateway = new DevStubGateway();
+
+    // 1. Create order
+    const orderRes = await executeCreateOrder({
+      mandate,
+      gateway,
+      returnUrl: "http://localhost:3000/checkout?return=true",
+      cancelUrl: "http://localhost:3000/checkout?cancel=true",
+    });
+
+    // 2. Simulate buyer decline or risk hold on payment gateway
+    gateway.simulateBuyerDecline(orderRes.orderId);
+
+    // 3. Attempt capture
+    const captureRes = await executeCaptureOrder({
+      mandate,
+      orderId: orderRes.orderId,
+      gateway,
+    });
+
+    expect(captureRes.status).toBe("DECLINED");
+
+    // 4. Assert proposal state is CAPTURE_FAILED
+    const [updatedProp] = await db
+      .select()
+      .from(schema.proposals)
+      .where(eq(schema.proposals.id, failPropId));
+    expect(updatedProp.state).toBe("CAPTURE_FAILED");
+
+    // 5. Assert mandate was consumed BEFORE capture (single-use burned on capture attempt)
+    const [mandateRow] = await db
+      .select()
+      .from(schema.mandates)
+      .where(eq(schema.mandates.jti, mandate.jti));
+    expect(mandateRow.usedAt).not.toBeNull();
+
+    // 6. Assert attempting to reuse the spent mandate fails with MANDATE_ALREADY_USED
+    await expect(
+      executeCaptureOrder({
+        mandate,
+        orderId: orderRes.orderId,
+        gateway,
+      })
+    ).rejects.toThrow("MANDATE_ALREADY_USED");
+
+    // 7. Assert hash-chained ledger event PAYPAL_ORDER_CAPTURE_FAILED was recorded
+    const events = await db
+      .select()
+      .from(schema.ledgerEvents)
+      .where(eq(schema.ledgerEvents.workspaceId, wsId));
+    const failEvent = events.find((e) => e.type === "PAYPAL_ORDER_CAPTURE_FAILED");
+    expect(failEvent).toBeDefined();
+    expect(failEvent?.payloadJson).toMatchObject({
+      order_id: orderRes.orderId,
+      proposal_id: failPropId,
+      status: "DECLINED",
+    });
+  });
+
   it("refuses to initialize production PayPal gateway when PAYMENT_MODE=dev_stub", () => {
     process.env.PAYMENT_MODE = "dev_stub";
     const gateway = getPaymentGateway();

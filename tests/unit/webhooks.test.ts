@@ -246,4 +246,119 @@ describe("Webhook Inbox & Signature Verification (PRD §8.2, §8.3, F7, Threat A
       actual_amount_cents: 19999,
     });
   });
+
+  it("reconciles out-of-order webhook via gateway.getOrder when capture webhook arrives before local capture response (PRD §8.3)", async () => {
+    // 1. Prepare proposal in BUYER_APPROVED state (capture response not yet processed locally)
+    const outOrderPropId = "prop_out_order_" + Math.random().toString(36).slice(2, 9);
+    const outOrderHash = crypto.createHash("sha256").update("canonical_out_order_" + Math.random()).digest("hex");
+    const outOrderJti = "mandate_ooo_" + Math.random().toString(36).slice(2, 9);
+    const outOrderId = "ORDER-OOO-" + Math.random().toString(36).slice(2, 9);
+
+    await db.insert(proposals).values({
+      id: outOrderPropId,
+      workspaceId: testWorkspaceId,
+      totalCents: 8499,
+      currency: "USD",
+      proposalHash: outOrderHash,
+      state: "BUYER_APPROVED",
+      policyVersionId: testPolicyVersionId,
+      itemsJson: [{ sku: "K2-KEYBOARD", title: "Keychron K2", unit_price_cents: 8499, quantity: 1 }],
+    });
+
+    await db.insert(mandates).values({
+      jti: outOrderJti,
+      workspaceId: testWorkspaceId,
+      proposalId: outOrderPropId,
+      propHash: outOrderHash,
+      policyVersionId: testPolicyVersionId,
+      amountCents: 8499,
+      currency: "USD",
+      grant: "POLICY_AUTO",
+      expiresAt: new Date(Date.now() + 900_000),
+    });
+
+    await db.insert(paypalOrders).values({
+      id: "pord_ooo_" + Math.random().toString(36).slice(2, 8),
+      workspaceId: testWorkspaceId,
+      proposalId: outOrderPropId,
+      paypalOrderId: outOrderId,
+      status: "APPROVED",
+      requestId: `create-${outOrderJti}`,
+      amountCents: 8499,
+      currency: "USD",
+    });
+
+    // 2. Mock or provide gateway where getOrder returns authoritative PayPal state
+    let getOrderCalled = false;
+    const mockGateway = {
+      mode: "dev_stub" as const,
+      createOrder: async () => { throw new Error("not called"); },
+      captureOrder: async () => { throw new Error("not called"); },
+      getOrder: async (id: string) => {
+        if (id === outOrderId) {
+          getOrderCalled = true;
+          return {
+            orderId: outOrderId,
+            status: "COMPLETED" as const,
+            customId: outOrderHash,
+            amountCents: 8499,
+            currency: "USD",
+            source: "dev_stub" as const,
+            label: "dev_stub",
+            rawResponse: { id: outOrderId, status: "COMPLETED" },
+          };
+        }
+        throw new Error(`Order not found: ${id}`);
+      },
+    };
+
+    // 3. Webhook arrives out of order
+    const eventId = "WH-EVT-OUT-OF-ORDER-" + Date.now();
+    const rawPayload = JSON.stringify({
+      id: eventId,
+      event_type: "PAYMENT.CAPTURE.COMPLETED",
+      resource: {
+        id: "CAP-OOO-789",
+        custom_id: outOrderHash,
+        amount: {
+          value: "84.99",
+          currency_code: "USD",
+        },
+        supplementary_data: {
+          related_ids: {
+            order_id: outOrderId,
+          },
+        },
+      },
+    });
+
+    const sig = createDevStubSignature(rawPayload);
+    const headers = { transmissionSig: sig };
+
+    const result = await processWebhook(rawPayload, headers, testWorkspaceId, mockGateway);
+    expect(result.status).toBe(200);
+    expect(result.reconciliationStatus).toBe("CONFIRMED");
+    expect(getOrderCalled).toBe(true);
+
+    // 4. Assert proposal updated to CONFIRMED
+    const [prop] = await db
+      .select()
+      .from(proposals)
+      .where(eq(proposals.id, outOrderPropId));
+    expect(prop.state).toBe("CONFIRMED");
+
+    // 5. Assert hash-chained ledger event WEBHOOK_RECONCILED_OUT_OF_ORDER was appended
+    const events = await db
+      .select()
+      .from(ledgerEvents)
+      .where(eq(ledgerEvents.workspaceId, testWorkspaceId));
+
+    const oooEvent = events.find((e) => e.type === "WEBHOOK_RECONCILED_OUT_OF_ORDER");
+    expect(oooEvent).toBeDefined();
+    expect(oooEvent?.payloadJson).toMatchObject({
+      order_id: outOrderId,
+      proposal_id: outOrderPropId,
+      reconciled_via: "gateway.getOrder",
+    });
+  });
 });
