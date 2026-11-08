@@ -284,7 +284,36 @@ export async function executeCaptureOrder(
   const internalOrderId = orders.length > 0 ? orders[0].id : orderId;
 
   // 4. Call Payment Gateway
-  const result = await gateway.captureOrder(mandate, orderId, requestId);
+  let result: GatewayCaptureResult;
+  try {
+    result = await gateway.captureOrder(mandate, orderId, requestId);
+  } catch (err) {
+    // Gateway call threw error: record CAPTURE_FAILED state and ledger event (PRD §8.2 step 5)
+    await db
+      .update(schema.proposals)
+      .set({
+        state: "CAPTURE_FAILED",
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.proposals.id, mandate.proposalId));
+
+    await appendEvent({
+      workspaceId: mandate.workspaceId,
+      entityType: "capture",
+      entityId: orderId,
+      type: "PAYPAL_ORDER_CAPTURE_FAILED",
+      actor: "executor",
+      payload: {
+        order_id: orderId,
+        proposal_id: mandate.proposalId,
+        proposal_hash: mandate.proposalHash,
+        error: err instanceof Error ? err.message : String(err),
+        status: "FAILED",
+      },
+    });
+
+    throw err;
+  }
 
   // 5. Record capture row in paypal_captures
   await db.insert(schema.paypalCaptures).values({
@@ -299,7 +328,8 @@ export async function executeCaptureOrder(
   });
 
   // 6. Update proposal state
-  const nextState = result.status === "COMPLETED" ? "CAPTURED" : "CAPTURE_FAILED";
+  const isCompleted = result.status === "COMPLETED";
+  const nextState = isCompleted ? "CAPTURED" : "CAPTURE_FAILED";
   await db
     .update(schema.proposals)
     .set({
@@ -309,11 +339,12 @@ export async function executeCaptureOrder(
     .where(eq(schema.proposals.id, mandate.proposalId));
 
   // Append hash-chained ledger event (Golden Rule 8)
+  const eventType = isCompleted ? "PAYPAL_ORDER_CAPTURED" : "PAYPAL_ORDER_CAPTURE_FAILED";
   await appendEvent({
     workspaceId: mandate.workspaceId,
     entityType: "capture",
     entityId: result.captureId,
-    type: "PAYPAL_ORDER_CAPTURED",
+    type: eventType,
     actor: "executor",
     payload: {
       capture_id: result.captureId,

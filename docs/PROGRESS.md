@@ -246,7 +246,7 @@
 ## Phase 11: Agent Workspace & Proposals
 - Status: Done
 - Branch: feat/agent-workspace-proposals
-- PR / Tag: #11 / phase-11
+- Tag: phase-11
 
 ### Checklist
 - [x] Server-side proposal builder recomputing prices and RFC 8785 hash (`src/rooms/propose/proposalService.ts`)
@@ -275,7 +275,7 @@
 ## Phase 12: Mandates and Approval Centre
 - Status: Done
 - Branch: feat/mandates-approval-centre
-- PR / Tag: #12 / phase-12
+- Tag: phase-12
 
 ### Checklist
 - [x] Ed25519 key loading & signing with `jose` (`src/rooms/authorize/mandates.ts`)
@@ -305,7 +305,7 @@
 ## Phase 13: Payment Gateway Interface, Dev Stub & Checkout Page
 - Status: Done
 - Branch: feat/payment-gateway-executor-checkout
-- PR / Tag: #13 / phase-13
+- Tag: phase-13
 
 ### Checklist
 - [x] Defined `PaymentGateway` interface in `src/rooms/execute/types.ts` accepting only `VerifiedMandate`
@@ -338,7 +338,7 @@
 ## Phase 14: Hash-Chained Ledger & Public Verify Page
 - Status: Done
 - Branch: feat/ledger-verify-chain
-- PR / Tag: #14 / phase-14
+- Tag: phase-14
 
 ### Checklist
 - [x] Implemented `appendEvent` with workspace chain head locking via `SELECT ... FOR UPDATE`, RFC 8785 canonical serialization, and SHA-256 hash chaining (`src/rooms/verify/ledger.ts`)
@@ -369,7 +369,7 @@
 ## Phase 15: Webhook Inbox with Verifier Interface
 - Status: Done
 - Branch: feat/webhooks-reconciliation
-- PR / Tag: #15 / phase-15
+- Tag: phase-15
 
 ### Checklist
 - [x] Defined `WebhookVerifier` interface and transmission headers types in `src/rooms/verify/webhooks/types.ts`
@@ -398,7 +398,7 @@
 ## Phase 16: Attack Lab & Adversarial Verification Suite
 - Status: Done
 - Branch: feat/attack-lab
-- PR / Tag: #16 / phase-16
+- Tag: phase-16
 
 ### Checklist
 - [x] Defined and implemented all 7 adversarial scenarios (A1 to A7) in `src/rooms/verify/attackLab/scenarios.ts` using real engine, mandate, webhook, and ledger modules
@@ -434,7 +434,7 @@
 ## Phase 17: AG Studio Base & Control Tower Telemetry
 - Status: Done
 - Branch: feat/ag-studio-base
-- PR / Tag: #17 / phase-17
+- Tag: phase-17
 
 ### Checklist
 - [x] Installed `ag-studio-react` (v3.1.0) and associated dependencies
@@ -466,7 +466,7 @@
 ## Phase 18: Custom Widgets & Control Tower Dashboard
 - Status: Done
 - Branch: feat/studio-custom-widgets
-- PR / Tag: #18 / phase-18
+- Tag: phase-18
 
 ### Checklist
 - [x] Built Authority Budget Ring widget (`src/studio/widgets/AuthorityBudgetRing.tsx`) tracking spent vs reserved vs remaining budget against daily cap
@@ -497,7 +497,7 @@
 ## Phase 19: Auditor Agent
 - Status: Done
 - Branch: feat/auditor-agent
-- PR / Tag: #19 / phase-19
+- Tag: phase-19
 
 ### Checklist
 - [x] Defined 3 strictly read-only auditor tools in `src/studio/auditor/tools.ts`: `query_ledger`, `explain_decision`, `summarize_blocked`
@@ -530,7 +530,6 @@
 ## Phase 20: Fix PGlite Bundling in Next.js & HTTP Workspace Creation
 - Status: Done
 - Branch: fix/pglite-next-config
-- PR / Tag: #20 / fix-pglite-bundling
 
 ### Checklist
 - [x] Configured `experimental.serverComponentsExternalPackages: ['@electric-sql/pglite']` in `next.config.mjs`
@@ -552,4 +551,35 @@
 - Provided fallback for non-production environments in `src/lib/session.ts` so developers can start and test fresh clones without manual `.env` file requirements.
 
 ### Next
-- End-to-end user testing and demonstration.
+- Phase 21: Polish, hardening, pre-capture mandate atomicity, and out-of-order webhook reconciliation.
+
+
+---
+
+## Phase 21: Polish, Hardening & Pre-Capture Mandate Atomicity
+- Status: Done
+- Branch: fix/pglite-next-config
+
+### Checklist
+- [x] Fixed sidebar links (/agent, /approvals, /studio, /attack-lab, /settings, /policies), implemented Settings diagnostics page (/settings), improved cookie whitespace and quote handling, and added automated route test (`tests/integration/sidebar-links.test.ts`)
+- [x] Upgraded default AI model from `gemini-1.5-flash` to current `gemini-2.0-flash`, adding active model health check in `/api/health`
+- [x] Updated terminology to "Tamper-Evident Ledger" across landing page and documentation
+- [x] Updated `/api/health` to execute live query against database client, correctly reporting `database: true` for both embedded PGlite and PostgreSQL
+- [x] Removed non-existent pull request references from `docs/PROGRESS.md`
+- [x] Enforced atomic pre-capture mandate consumption in `executeCaptureOrder` (PRD §8.2 step 5)
+- [x] Implemented `CAPTURE_FAILED` error handling, recording `PAYPAL_ORDER_CAPTURE_FAILED` in hash-chained ledger and requiring a fresh approval/mandate to retry
+- [x] Implemented out-of-order webhook reconciliation via `gateway.getOrder` (PRD §8.2 step 8, §8.3), verifying remote order status and recording `WEBHOOK_RECONCILED_OUT_OF_ORDER`
+- [x] Configured sequential vitest execution (`fileParallelism: false`) and 20s timeout in `vitest.config.ts` to prevent PGlite filesystem lock collisions on Windows
+
+### Tested
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npm test` -> Passed (35 / 35 test files passed, 283 / 283 tests green)
+
+### Issues / Decisions
+- Pre-capture mandate consumption: Mandate is burned atomically before sending the capture request to PayPal / gateway. If capture fails or is declined, the mandate cannot be replayed (`MANDATE_ALREADY_USED`) and the proposal enters `CAPTURE_FAILED`, requiring re-approval.
+- Out-of-order webhooks: Per PRD §8.3, if `PAYMENT.CAPTURE.COMPLETED` arrives while local state is `ORDER_CREATED`, `BUYER_APPROVED`, or `PENDING_CONFIRMATION`, the authority gate queries `gateway.getOrder(orderId)` to treat PayPal's response as authoritative, reconciling the database to `CONFIRMED` and appending `WEBHOOK_RECONCILED_OUT_OF_ORDER`.
+- Concurrency & PGlite locking: On Windows, parallel test workers accessing the same `.data` directory can cause PGlite init collisions. Adding `fileParallelism: false` ensures sequential test file execution and deterministic ledger hash chaining.
+
+### Next
+- Final end-to-end review and demo preparation.

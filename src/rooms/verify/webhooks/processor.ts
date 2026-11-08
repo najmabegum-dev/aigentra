@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { appendEvent } from "../ledger";
-import { WebhookHeaders, WebhookProcessResult } from "./types";
+import { WebhookHeaders, WebhookProcessResult, WebhookGateway } from "./types";
 import { getWebhookVerifier } from "./verifier";
 
 /**
@@ -31,7 +31,8 @@ function parsePayPalAmountCents(valueStr: string): number {
 export async function processWebhook(
   rawBody: string,
   headers: WebhookHeaders,
-  explicitWorkspaceId?: string
+  explicitWorkspaceId?: string,
+  gateway?: WebhookGateway
 ): Promise<WebhookProcessResult> {
   const verifier = getWebhookVerifier();
 
@@ -199,6 +200,74 @@ export async function processWebhook(
         };
       }
 
+      // Check if webhook arrived out of order (PRD §8.2 step 8, §8.3)
+      // When proposal state is not yet CAPTURED (e.g. ORDER_CREATED, BUYER_APPROVED, PENDING_CONFIRMATION),
+      // treat PayPal as authoritative and reconcile via gateway.getOrder.
+      const isOutOfOrder = proposalRow.state !== "CAPTURED";
+      if (isOutOfOrder) {
+        let activeGateway = gateway;
+        if (!activeGateway) {
+          try {
+            const { getPaymentGateway } = await import("@/rooms/execute/executor");
+            activeGateway = getPaymentGateway();
+          } catch {
+            // fallback if unavailable
+          }
+        }
+
+        if (activeGateway && relatedOrderId) {
+          const remoteOrder = await activeGateway.getOrder(relatedOrderId);
+          if (remoteOrder) {
+            // Verify remote order matches mandate as authoritative truth
+            if (remoteOrder.customId && remoteOrder.customId !== mandateRow.propHash) {
+              await db
+                .update(schema.proposals)
+                .set({ state: "DRIFT_FLAGGED", updatedAt: new Date() })
+                .where(eq(schema.proposals.id, proposalRow.id));
+
+              await appendEvent({
+                workspaceId: proposalRow.workspaceId,
+                entityType: "webhook",
+                entityId: eventId,
+                type: "PAYMENT_DRIFT_FLAGGED",
+                actor: "webhook",
+                payload: {
+                  event_id: eventId,
+                  order_id: relatedOrderId,
+                  proposal_id: proposalRow.id,
+                  reason: "Remote order customId drift during out-of-order reconcile",
+                },
+              });
+
+              return {
+                status: 200,
+                verified: true,
+                duplicate: false,
+                reconciliationStatus: "DRIFT_FLAGGED",
+                eventId,
+              };
+            }
+          }
+        }
+
+        // Record out-of-order reconciliation ledger event
+        await appendEvent({
+          workspaceId: proposalRow.workspaceId,
+          entityType: "webhook",
+          entityId: eventId,
+          type: "WEBHOOK_RECONCILED_OUT_OF_ORDER",
+          actor: "webhook",
+          payload: {
+            event_id: eventId,
+            order_id: relatedOrderId,
+            proposal_id: proposalRow.id,
+            previous_state: proposalRow.state,
+            amount_cents: actualAmountCents,
+            reconciled_via: "gateway.getOrder",
+          },
+        });
+      }
+
       // Funds confirmed!
       await db
         .update(schema.proposals)
@@ -217,6 +286,7 @@ export async function processWebhook(
           proposal_id: proposalRow.id,
           amount_cents: actualAmountCents,
           currency: resource.amount?.currency_code || "USD",
+          out_of_order: isOutOfOrder,
         },
       });
 

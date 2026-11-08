@@ -107,21 +107,53 @@ export class DevStubGateway implements PaymentGateway {
 
   async getOrder(id: string): Promise<GatewayOrderResult> {
     const order = simulatedOrdersStore.get(id);
-    if (!order) {
-      throw new Error(`DevStub order not found: ${id}`);
+    if (order) {
+      return {
+        orderId: order.orderId,
+        status: order.status,
+        approveUrl: order.approveUrl,
+        customId: order.customId,
+        amountCents: order.amountCents,
+        currency: order.currency,
+        source: "dev_stub",
+        label: "dev_stub",
+        rawResponse: order,
+      };
     }
 
-    return {
-      orderId: order.orderId,
-      status: order.status,
-      approveUrl: order.approveUrl,
-      customId: order.customId,
-      amountCents: order.amountCents,
-      currency: order.currency,
-      source: "dev_stub",
-      label: "dev_stub",
-      rawResponse: order,
-    };
+    // Fallback: check database for persisted paypal_orders
+    const { getDb } = await import("@/lib/db");
+    const schema = await import("@/lib/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const db = await getDb();
+    const rows = await db
+      .select()
+      .from(schema.paypalOrders)
+      .where(eq(schema.paypalOrders.paypalOrderId, id))
+      .limit(1);
+
+    if (rows.length > 0) {
+      const orderRow = rows[0];
+      const mans = await db
+        .select()
+        .from(schema.mandates)
+        .where(eq(schema.mandates.proposalId, orderRow.proposalId))
+        .limit(1);
+
+      return {
+        orderId: orderRow.paypalOrderId,
+        status: (orderRow.status === "CREATED" ? "CREATED" : "COMPLETED") as GatewayOrderStatus,
+        approveUrl: `http://localhost:3000/dev-stub/buyer-approval?token=${orderRow.paypalOrderId}`,
+        customId: mans.length > 0 ? mans[0].propHash : undefined,
+        amountCents: orderRow.amountCents,
+        currency: orderRow.currency,
+        source: "dev_stub",
+        label: "dev_stub",
+        rawResponse: orderRow,
+      };
+    }
+
+    throw new Error(`DevStub order not found: ${id}`);
   }
 
   async captureOrder(
