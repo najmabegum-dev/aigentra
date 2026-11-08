@@ -42,6 +42,7 @@ export function signWorkspaceId(workspaceId: string, secret?: string): string {
 
 /**
  * Verifies a signed workspace cookie value using constant-time comparison.
+ * Handles raw strings, surrounding quotes, and URI-encoded cookie values.
  * Returns workspaceId if valid, or null if tampered/invalid.
  */
 export function verifyWorkspaceId(signedValue: string | null | undefined, secret?: string): string | null {
@@ -49,13 +50,23 @@ export function verifyWorkspaceId(signedValue: string | null | undefined, secret
     return null;
   }
 
-  const lastDotIndex = signedValue.lastIndexOf(".");
+  let cleanValue = signedValue.trim();
+  if (cleanValue.startsWith('"') && cleanValue.endsWith('"')) {
+    cleanValue = cleanValue.slice(1, -1).trim();
+  }
+  try {
+    cleanValue = decodeURIComponent(cleanValue);
+  } catch {
+    // Continue with cleanValue if URI decoding fails
+  }
+
+  const lastDotIndex = cleanValue.lastIndexOf(".");
   if (lastDotIndex <= 0) {
     return null;
   }
 
-  const workspaceId = signedValue.substring(0, lastDotIndex);
-  const signature = signedValue.substring(lastDotIndex + 1);
+  const workspaceId = cleanValue.substring(0, lastDotIndex);
+  const signature = cleanValue.substring(lastDotIndex + 1);
 
   if (!workspaceId || !signature) {
     return null;
@@ -91,7 +102,7 @@ export function parseWorkspaceCookie(cookieHeader: string | null | undefined, se
   for (const cookie of cookies) {
     if (cookie.startsWith(`${WORKSPACE_COOKIE_NAME}=`)) {
       const rawValue = cookie.substring(WORKSPACE_COOKIE_NAME.length + 1);
-      return verifyWorkspaceId(decodeURIComponent(rawValue), secret);
+      return verifyWorkspaceId(rawValue, secret);
     }
   }
 

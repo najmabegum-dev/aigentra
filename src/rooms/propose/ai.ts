@@ -5,7 +5,64 @@ import { parsedIntentSchema, type ParsedIntent, type IntentParseResult } from ".
 import { getReplayIntent } from "./replay";
 import { checkWorkspaceAiCap, recordAiUsage } from "./caps";
 
-export const DEFAULT_GEMINI_MODEL = "gemini-1.5-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash";
+
+export interface GeminiHealthResult {
+  id: string;
+  configured: boolean;
+  operational: boolean;
+  error?: string;
+}
+
+/**
+ * Health check that tests whether the configured Gemini model ID is operational
+ * by performing a minimal single-token verification call.
+ */
+export async function checkGeminiHealth(): Promise<GeminiHealthResult> {
+  const modelId = process.env.GEMINI_MODEL_ID || DEFAULT_GEMINI_MODEL;
+  const apiKey =
+    process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+
+  if (!apiKey) {
+    return {
+      id: modelId,
+      configured: false,
+      operational: false,
+      error: "GEMINI_API_KEY is not configured",
+    };
+  }
+
+  try {
+    const model = getLanguageModel();
+    if (!model) {
+      return {
+        id: modelId,
+        configured: false,
+        operational: false,
+        error: "Unable to initialize Gemini model instance",
+      };
+    }
+
+    const { generateText } = await import("ai");
+    const result = await generateText({
+      model,
+      prompt: "ping",
+    });
+
+    return {
+      id: modelId,
+      configured: true,
+      operational: Boolean(result.text !== undefined),
+    };
+  } catch (err: any) {
+    return {
+      id: modelId,
+      configured: true,
+      operational: false,
+      error: err?.message || "Unknown error calling Gemini model",
+    };
+  }
+}
 
 /**
  * Resolves the language model based on environment configuration.

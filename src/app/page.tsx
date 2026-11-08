@@ -132,7 +132,7 @@ export default function HomePage() {
             <div className="text-xs font-mono text-muted-foreground uppercase tracking-wider font-semibold">
               4. Verify
             </div>
-            <h2 className="text-sm font-bold text-ink">Tamper-Proof Ledger</h2>
+            <h2 className="text-sm font-bold text-ink">Tamper-Evident Ledger</h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
               Raw-body verified webhooks confirm funds and seal an append-only, SHA-256 hash-chained event ledger.
             </p>
