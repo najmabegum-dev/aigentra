@@ -602,12 +602,16 @@
 ### Tested
 - `node scripts/spike-paypal.mjs` -> Passed (Generated live Sandbox Order `03197678BP509731G`, status `PAYER_ACTION_REQUIRED`, approve URL returned)
 - `POST /api/spike` (`action: "create"`) -> Passed (Generated live Sandbox Order `1BV07891P1121570F`, status `PAYER_ACTION_REQUIRED`)
+- Live Sandbox Buyer Approval & Server-Side Capture -> **Passed (100% verified live on PayPal Sandbox)**:
+  - Order `3EW77512CL478240A` -> Captured server-side as `8CC43315P4326833W` (Status: `COMPLETED`, Amount: `USD 10.00`)
+  - Order `86723729NA318782U` -> Captured server-side as `7PK34147AL947684C` (Status: `COMPLETED`, Amount: `USD 10.00`)
 - `npm run lint` -> Passed (✔ No ESLint warnings or errors)
 - `npm run typecheck` -> Passed (0 errors)
 
 ### Issues / Decisions
 - Followed Golden Rule 10: Secrets never leave the server. Credentials are loaded from gitignored `.env.local`, never logged, committed, or rendered in UI.
 - All files, routes, and UI banners are explicitly marked `THROWAWAY SPIKE - NOT FOR PRODUCTION`.
+- Resolved `PAYEE_ACCOUNT_LOCKED_OR_CLOSED` by linking credentials to the pre-verified US Sandbox Business merchant account (`sb-76oqy53795010@business.example.com`).
 
 ### Next
-- Live buyer sandbox approval and server-side capture verification.
+- Phase 23: Complete integration of verified PayPal Sandbox gateway into production Authority Gate execution flow.
