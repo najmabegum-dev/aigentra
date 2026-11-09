@@ -56,13 +56,14 @@ export interface ExecuteCreateOrderParams {
 }
 
 /**
- * Executes PayPal order creation under the Authority Gate (PRD §8.2 Step 2).
+ * Executes PayPal order creation under the Authority Gate (PRD §8.2 Step 2, §8.3 Row 3).
  *
  * Requirements:
  * 1. Accepts ONLY a VerifiedMandate (Golden Rule 2).
  * 2. Re-verifies mandate and re-runs policy engine before invoking the gateway.
  * 3. Persists idempotency key (PayPal-Request-Id) BEFORE calling the gateway.
  * 4. Anchors custom_id = proposal_hash in PayPal order payload.
+ * 5. On retry after timeout, looks up by stored request ID without creating duplicate orders (PRD §8.3).
  */
 export async function executeCreateOrder(
   params: ExecuteCreateOrderParams
@@ -143,7 +144,7 @@ export async function executeCreateOrder(
     );
   }
 
-  // 5. Idempotency Key: create-<mandate.jti> persisted BEFORE sending (PRD §8.2)
+  // 5. Idempotency Key: create-<mandate.jti> persisted BEFORE sending (PRD §8.2 step 2, §8.3 Row 3)
   const requestId = `create-${mandate.jti}`;
 
   // Check if order was already initiated for this mandate / requestId
@@ -153,35 +154,41 @@ export async function executeCreateOrder(
     .where(eq(schema.paypalOrders.requestId, requestId))
     .limit(1);
 
-  if (existingOrder.length > 0) {
-    // Return existing idempotent result
-    const existing = existingOrder[0];
-    return {
-      orderId: existing.paypalOrderId,
-      status: (existing.status as any) || "CREATED",
-      customId: mandate.proposalHash,
-      amountCents: existing.amountCents,
-      currency: existing.currency,
-      source: "dev_stub",
-      label: "Dev Stub (Simulated PayPal Orders v2)",
-      rawResponse: { id: existing.paypalOrderId, status: existing.status },
-    };
-  }
+  let internalOrderId: string;
 
-  // Persist record to paypal_orders before gateway invocation
-  const internalOrderId = `pord_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
-  await db.insert(schema.paypalOrders).values({
-    id: internalOrderId,
-    workspaceId: mandate.workspaceId,
-    proposalId: proposal.id,
-    paypalOrderId: "PENDING",
-    status: "CREATED",
-    requestId,
-    amountCents: proposal.totalCents,
-    currency: (proposal.currency || "USD") as "USD",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
+  if (existingOrder.length > 0) {
+    const existing = existingOrder[0];
+    if (existing.paypalOrderId && !existing.paypalOrderId.startsWith("PENDING")) {
+      // Order was already successfully created with this request ID: return idempotent result
+      return {
+        orderId: existing.paypalOrderId,
+        status: (existing.status as any) || "CREATED",
+        customId: mandate.proposalHash,
+        amountCents: existing.amountCents,
+        currency: existing.currency,
+        source: gateway.mode,
+        label: `${gateway.mode === "paypal_sandbox" ? "PayPal Sandbox (Orders v2)" : "Dev Stub"} [Idempotent]`,
+        rawResponse: { id: existing.paypalOrderId, status: existing.status },
+      };
+    }
+    // Previous attempt timed out or failed while PENDING: reuse existing record and stored requestId
+    internalOrderId = existing.id;
+  } else {
+    // Persist record to paypal_orders before gateway invocation (PRD §8.2 step 2)
+    internalOrderId = `pord_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+    await db.insert(schema.paypalOrders).values({
+      id: internalOrderId,
+      workspaceId: mandate.workspaceId,
+      proposalId: proposal.id,
+      paypalOrderId: `PENDING_${internalOrderId}`,
+      status: "CREATED",
+      requestId,
+      amountCents: proposal.totalCents,
+      currency: (proposal.currency || "USD") as "USD",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
 
   // 6. Call Payment Gateway
   const orderInput: GatewayCreateOrderInput = {
@@ -248,7 +255,7 @@ export interface ExecuteCaptureOrderParams {
 }
 
 /**
- * Executes PayPal order capture under the Authority Gate (PRD §8.2 Step 5).
+ * Executes PayPal order capture under the Authority Gate (PRD §8.2 Step 5, §8.3 Rows 2 & 4).
  *
  * Requirements:
  * 1. Atomically consumes the single-use mandate BEFORE sending capture call.
@@ -294,7 +301,7 @@ export async function executeCaptureOrder(
   try {
     result = await gateway.captureOrder(mandate, orderId, requestId);
   } catch (err) {
-    // Gateway call threw error: record CAPTURE_FAILED state and ledger event (PRD §8.2 step 5)
+    // Gateway call threw error: record CAPTURE_FAILED state and ledger event (PRD §8.2 step 5, §8.3 Row 2)
     await db
       .update(schema.proposals)
       .set({

@@ -95,6 +95,18 @@ export default function CheckoutPage() {
           mandate: mandateObj,
         });
 
+        // If returned with buyer cancellation, notify server (PRD §8.3 Row 1)
+        if (isCancelled && json.proposal.state !== "BUYER_CANCELLED") {
+          await fetch("/api/checkout/cancel", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              proposal_id: proposalId,
+              reason: "Buyer cancelled checkout flow on PayPal Sandbox",
+            }),
+          });
+        }
+
         // If returned with buyer approval and not yet captured, auto-trigger return verification and capture
         if (isReturn && (isApproved || orderId) && orderId && mandateObj?.token) {
           await handleReturnAndCapture(orderId, mandateObj.token);
@@ -107,7 +119,7 @@ export default function CheckoutPage() {
     };
 
     loadData();
-  }, [proposalId, isReturn, isApproved, orderId]);
+  }, [proposalId, isReturn, isApproved, isCancelled, orderId]);
 
   const handleReturnAndCapture = async (paypalOrderId: string, token: string) => {
     try {
@@ -203,7 +215,7 @@ export default function CheckoutPage() {
     );
   }
 
-  if (error || !data) {
+  if (!data) {
     return (
       <div className="max-w-xl mx-auto p-6 rounded-card border border-status-deny/30 bg-status-deny/10 text-status-deny space-y-4 text-center">
         <XCircle className="w-10 h-10 mx-auto" />
@@ -220,7 +232,10 @@ export default function CheckoutPage() {
   }
 
   const proposal = data.proposal;
-  const isCaptured = Boolean(capturedReceipt || proposal.state === "CAPTURED");
+  const isCaptured = Boolean(capturedReceipt || proposal.state === "CAPTURED" || proposal.state === "CONFIRMED");
+  const isBuyerCancelled = isCancelled || proposal.state === "BUYER_CANCELLED";
+  const isCaptureDeclined = isDeclined || proposal.state === "CAPTURE_FAILED" || Boolean(error && (error.includes("declined") || error.includes("DECLINED")));
+  const isDrift = proposal.state === "DRIFT_FLAGGED" || Boolean(error && (error.includes("DRIFT") || error.includes("drift")));
 
   // Determine current step on Authority Rail (1-5)
   let railStep: 1 | 2 | 3 | 4 | 5 = 2;
@@ -248,18 +263,50 @@ export default function CheckoutPage() {
       {/* Authority Rail (PRD §10.3) */}
       <AuthorityRail currentStep={railStep} proposalId={proposal.id} />
 
-      {/* Decline / Cancel Notifications */}
-      {isDeclined && (
-        <div className="p-4 rounded-card border border-status-deny/40 bg-status-deny/10 text-status-deny text-sm flex items-center gap-2">
-          <XCircle className="w-5 h-5 shrink-0" />
-          <span>Payment declined by simulated instrument. Single-use mandate remains protected.</span>
+      {/* Failure Notifications (PRD §8.3 Error Handling Matrix) */}
+      {isBuyerCancelled && (
+        <div className="p-4 rounded-card border border-amber-500/40 bg-amber-500/10 text-amber-300 text-sm flex items-start gap-3">
+          <XCircle className="w-5 h-5 shrink-0 mt-0.5 text-amber-400" />
+          <div className="space-y-1">
+            <div className="font-bold">Checkout Cancelled by Buyer (PRD §8.3 Row 1)</div>
+            <p className="text-xs text-amber-200/90 leading-relaxed">
+              Authorization was cancelled on PayPal. Proposal state has been transitioned to <strong>BUYER_CANCELLED</strong> and spend reservations released. A new approval is required to retry.
+            </p>
+          </div>
         </div>
       )}
 
-      {isCancelled && (
-        <div className="p-4 rounded-card border border-muted bg-surface text-muted-foreground text-sm flex items-center gap-2">
-          <XCircle className="w-5 h-5 shrink-0" />
-          <span>Checkout was cancelled by the buyer. Proposal remains intact.</span>
+      {isCaptureDeclined && (
+        <div className="p-4 rounded-card border border-status-deny/40 bg-status-deny/10 text-status-deny text-sm flex items-start gap-3">
+          <XCircle className="w-5 h-5 shrink-0 mt-0.5 text-status-deny" />
+          <div className="space-y-1">
+            <div className="font-bold">Payment Capture Declined (PRD §8.3 Row 2)</div>
+            <p className="text-xs text-red-200/90 leading-relaxed">
+              {error || "Your payment instrument was declined by PayPal (e.g. card declined or insufficient funds). State marked CAPTURE_FAILED. Mandate consumed; a new approval is required to retry."}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isDrift && (
+        <div className="p-4 rounded-card border border-status-deny bg-status-deny/20 text-status-deny text-sm flex items-start gap-3 animate-pulse">
+          <Shield className="w-5 h-5 shrink-0 mt-0.5 text-status-deny" />
+          <div className="space-y-1">
+            <div className="font-bold tracking-wide">🚨 DRIFT FLAGGED: Financial Security Alert (PRD §8.3 Row 7)</div>
+            <p className="text-xs text-red-200/90 leading-relaxed">
+              Financial parameters differ between the PayPal order and the cryptographic mandate (amount or custom_id mismatch). Execution has been immediately halted and a tamper security event logged to the ledger.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {error && !isCaptureDeclined && !isDrift && !isBuyerCancelled && (
+        <div className="p-4 rounded-card border border-status-deny/40 bg-status-deny/10 text-status-deny text-sm flex items-start gap-3">
+          <XCircle className="w-5 h-5 shrink-0 mt-0.5 text-status-deny" />
+          <div className="space-y-1">
+            <div className="font-bold">Execution Error</div>
+            <p className="text-xs text-red-200/90 leading-relaxed">{error}</p>
+          </div>
         </div>
       )}
 
@@ -345,7 +392,7 @@ export default function CheckoutPage() {
 
               <button
                 onClick={handleProceedToPayPal}
-                disabled={submitting}
+                disabled={submitting || isBuyerCancelled || isCaptureDeclined || isDrift}
                 className="w-full py-3 px-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {submitting ? (
