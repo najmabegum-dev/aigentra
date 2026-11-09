@@ -46,10 +46,10 @@ export default function CheckoutPage() {
   const searchParams = useSearchParams();
   const proposalId = searchParams.get("proposal_id") || "";
   const isReturn = searchParams.get("return") === "true";
-  const isApproved = searchParams.get("approved") === "true";
+  const isApproved = searchParams.get("approved") === "true" || searchParams.has("PayerID");
   const isDeclined = searchParams.get("declined") === "true";
   const isCancelled = searchParams.get("cancel") === "true";
-  const orderId = searchParams.get("order_id") || "";
+  const orderId = searchParams.get("order_id") || searchParams.get("token") || "";
 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<CheckoutProposalData | null>(null);
@@ -95,9 +95,9 @@ export default function CheckoutPage() {
           mandate: mandateObj,
         });
 
-        // If returned with buyer approval and not yet captured, auto-trigger capture
-        if (isReturn && isApproved && orderId && mandateObj?.token) {
-          await handleCapture(orderId, mandateObj.token);
+        // If returned with buyer approval and not yet captured, auto-trigger return verification and capture
+        if (isReturn && (isApproved || orderId) && orderId && mandateObj?.token) {
+          await handleReturnAndCapture(orderId, mandateObj.token);
         }
       } catch (err: any) {
         setError(err.message);
@@ -109,9 +109,28 @@ export default function CheckoutPage() {
     loadData();
   }, [proposalId, isReturn, isApproved, orderId]);
 
-  const handleCapture = async (paypalOrderId: string, token: string) => {
+  const handleReturnAndCapture = async (paypalOrderId: string, token: string) => {
     try {
       setSubmitting(true);
+
+      // 1. Verify return order from PayPal against the mandate (PRD §8.2 step 4, §8.3)
+      const verifyRes = await fetch("/api/checkout/return", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: paypalOrderId,
+          mandate_token: token,
+        }),
+      });
+
+      const verifyJson = await verifyRes.json();
+      if (!verifyRes.ok || !verifyJson.success) {
+        throw new Error(
+          verifyJson.error || "Order validation against mandate failed (possible drift detected)."
+        );
+      }
+
+      // 2. Execute capture through authority gate (PRD §8.2 step 5)
       const res = await fetch("/api/checkout/capture-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -207,7 +226,7 @@ export default function CheckoutPage() {
   let railStep: 1 | 2 | 3 | 4 | 5 = 2;
   if (isCaptured) {
     railStep = 5;
-  } else if (isApproved && orderId) {
+  } else if ((isApproved || isReturn) && orderId) {
     railStep = 4;
   } else if (proposal.state === "ORDER_CREATED") {
     railStep = 3;

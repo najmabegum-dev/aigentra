@@ -26,8 +26,6 @@
         "src/rooms/execute/**",
         "src/app/api/checkout/**",
         "src/app/api/dev-stub/**",
-        "src/app/spike/**",
-        "src/app/api/spike/**",
         "scripts/**",
         "tests/**"
       ],

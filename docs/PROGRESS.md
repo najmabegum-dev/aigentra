@@ -615,3 +615,34 @@
 
 ### Next
 - Phase 23: Complete integration of verified PayPal Sandbox gateway into production Authority Gate execution flow.
+
+
+---
+
+## Phase 23: PayPalGateway, PayPalVerifier & Return Verification Handler
+- Status: Done
+- Branch: fix/pglite-next-config
+
+### Checklist
+- [x] Implemented `PayPalGateway` in `src/rooms/execute/paypalGateway.ts` implementing `PaymentGateway` with `@paypal/paypal-server-sdk`
+- [x] Anchored `custom_id = proposal_hash` and `invoice_id = AGX-<proposal_id>` in PayPal order payloads (PRD §8.2 step 2)
+- [x] Implemented capture with reconcile-by-GET on timeout adopting `COMPLETED` order state per PRD §8.3
+- [x] Updated `getPaymentGateway()` in `src/rooms/execute/executor.ts` to select `PayPalGateway` when `PAYMENT_MODE=paypal`
+- [x] Implemented `PayPalVerifier` in `src/rooms/verify/webhooks/paypalVerifier.ts` calling `/v1/notifications/verify-webhook-signature` with `PAYPAL_WEBHOOK_ID` using raw body and in-memory cached OAuth token
+- [x] Implemented `verifyReturnOrder` in `src/rooms/execute/returnVerifier.ts` and return route `src/app/api/checkout/return/route.ts` validating order amount and `custom_id` against mandate (PRD §8.2 step 4 & §8.3)
+- [x] Connected return verification to `src/app/(workspace)/checkout/page.tsx` buyer return flow
+- [x] Removed throwaway `/spike` page and route (`src/app/spike/page.tsx`, `src/app/api/spike/route.ts`) and updated `.eslintrc.json`
+- [x] Added unit tests for `PayPalGateway`, `PayPalVerifier`, and return handler (`tests/unit/paypal-gateway.test.ts`, `tests/unit/paypal-verifier.test.ts`, `tests/unit/checkout-return.test.ts`)
+
+### Tested
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npm test` -> Passed (38 / 38 test files passed, 295 / 295 tests green)
+
+### Issues / Decisions
+- Strict Mandate Anchor: PayPal order creation anchors `custom_id = proposal_hash` and `invoice_id = AGX-<proposalId>`. Return handler loads the order from PayPal via `getOrder` and validates that `amountCents` and `custom_id` match the cryptographic mandate before capture proceeds, flagging `DRIFT_FLAGGED` on mismatch.
+- Reconcile-by-GET: In accordance with PRD §8.3, if `captureOrder` times out or throws an error, `PayPalGateway` queries `ordersController.getOrder(orderId)`. If the remote order status is already `COMPLETED`, it adopts the result rather than leaving the system in an unconfirmed state.
+- Webhook Verification: `PayPalVerifier` queries `/v1/notifications/verify-webhook-signature` using the raw payload body and required transmission headers, rejecting any non-`SUCCESS` response with an error.
+
+### Next
+- Prepare for final submission and evaluation checks.

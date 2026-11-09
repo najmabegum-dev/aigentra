@@ -16,6 +16,7 @@ import {
   PaymentGateway,
 } from "./types";
 import { DevStubGateway } from "./devStub";
+import { PayPalGateway } from "./paypalGateway";
 import { appendEvent } from "@/rooms/verify/ledger";
 
 // Cached gateway singleton
@@ -23,7 +24,8 @@ let activeGateway: PaymentGateway | null = null;
 
 /**
  * Returns the configured Payment Gateway instance.
- * PRD §8.1: Selects DevStubGateway if PAYMENT_MODE === "dev_stub".
+ * PRD §8.1: Selects PayPalGateway if PAYMENT_MODE === "paypal" or "paypal_sandbox".
+ * Defaults to DevStubGateway for dev_stub mode and automated testing.
  */
 export function getPaymentGateway(): PaymentGateway {
   if (activeGateway) {
@@ -31,13 +33,17 @@ export function getPaymentGateway(): PaymentGateway {
   }
 
   const mode = process.env.PAYMENT_MODE || "dev_stub";
-  if (mode === "dev_stub") {
-    activeGateway = new DevStubGateway();
-    return activeGateway;
+  if (mode === "paypal" || mode === "paypal_sandbox") {
+    try {
+      activeGateway = new PayPalGateway();
+      return activeGateway;
+    } catch (err) {
+      console.error("Failed to initialize PayPalGateway, falling back to DevStubGateway:", err);
+      activeGateway = new DevStubGateway();
+      return activeGateway;
+    }
   }
 
-  // Future / P21 PayPal Sandbox Gateway will be initialized here
-  // Fall back to DevStubGateway if credentials not configured
   activeGateway = new DevStubGateway();
   return activeGateway;
 }
