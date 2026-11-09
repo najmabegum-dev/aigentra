@@ -619,41 +619,39 @@
 
 ---
 
-## Phase 23: PayPalGateway, PayPalVerifier & Return Verification Handler
+## Phase 23: PayPalGateway, Webhook Verification & PRD §8.3 Failure Paths
 - Status: Done
 - Branch: fix/pglite-next-config
+- Commits: `fc1dfbd`, `62b585b`
 
 ### Checklist
-- [x] Implemented `PayPalGateway` in `src/rooms/execute/paypalGateway.ts` implementing `PaymentGateway` with `@paypal/paypal-server-sdk`
-- [x] Anchored `custom_id = proposal_hash` and `invoice_id = AGX-<proposal_id>` in PayPal order payloads (PRD §8.2 step 2)
-- [x] Implemented capture with reconcile-by-GET on timeout adopting `COMPLETED` order state per PRD §8.3
-- [x] Updated `getPaymentGateway()` in `src/rooms/execute/executor.ts` to select `PayPalGateway` when `PAYMENT_MODE=paypal`
-- [x] Implemented `PayPalVerifier` in `src/rooms/verify/webhooks/paypalVerifier.ts` calling `/v1/notifications/verify-webhook-signature` with `PAYPAL_WEBHOOK_ID` using raw body and in-memory cached OAuth token
-- [x] Implemented `verifyReturnOrder` in `src/rooms/execute/returnVerifier.ts` and return route `src/app/api/checkout/return/route.ts` validating order amount and `custom_id` against mandate (PRD §8.2 step 4 & §8.3)
-- [x] Connected return verification to `src/app/(workspace)/checkout/page.tsx` buyer return flow
-- [x] Removed throwaway `/spike` page and route (`src/app/spike/page.tsx`, `src/app/api/spike/route.ts`) and updated `.eslintrc.json`
-- [x] Added unit tests for `PayPalGateway`, `PayPalVerifier`, and return handler (`tests/unit/paypal-gateway.test.ts`, `tests/unit/paypal-verifier.test.ts`, `tests/unit/checkout-return.test.ts`)
+- [x] Implemented `PayPalGateway` in `src/rooms/execute/paypalGateway.ts` implementing `PaymentGateway` with `@paypal/paypal-server-sdk` (`fc1dfbd`)
+- [x] Anchored `custom_id = proposal_hash` and `invoice_id = AGX-<proposal_id>` in PayPal order payloads (PRD §8.2 step 2) (`fc1dfbd`)
+- [x] Implemented capture with reconcile-by-GET on timeout adopting `COMPLETED` order state per PRD §8.3 (`fc1dfbd`)
+- [x] Updated `getPaymentGateway()` in `src/rooms/execute/executor.ts` to select `PayPalGateway` when `PAYMENT_MODE=paypal` (`fc1dfbd`)
+- [x] Implemented `PayPalVerifier` in `src/rooms/verify/webhooks/paypalVerifier.ts` calling `/v1/notifications/verify-webhook-signature` with `PAYPAL_WEBHOOK_ID` using raw body and in-memory cached OAuth token (`fc1dfbd`)
+- [x] Implemented `verifyReturnOrder` in `src/rooms/execute/returnVerifier.ts` and return route `src/app/api/checkout/return/route.ts` validating order amount and `custom_id` against mandate (PRD §8.2 step 4 & §8.3) (`fc1dfbd`)
+- [x] Connected return verification to `src/app/(workspace)/checkout/page.tsx` buyer return flow (`fc1dfbd`)
+- [x] Removed throwaway `/spike` page and route (`src/app/spike/page.tsx`, `src/app/api/spike/route.ts`) and updated `.eslintrc.json` (`fc1dfbd`)
+- [x] **PRD §8.3 Row 1 (Buyer cancels)**: Implemented `cancelCheckoutProposal` (`src/rooms/execute/cancelHandler.ts`) and `POST /api/checkout/cancel`, transitioning state to `BUYER_CANCELLED`, releasing reservation, and appending `BUYER_CANCELLED` ledger event (`62b585b`)
+- [x] **PRD §8.3 Row 2 (Capture declined)**: Implemented readable error message for `INSTRUMENT_DECLINED` / `DECLINED` in `/api/checkout/capture-order` and `checkout/page.tsx`, marking state as `CAPTURE_FAILED` and appending `PAYPAL_ORDER_CAPTURE_FAILED` to ledger (`62b585b`)
+- [x] **PRD §8.3 Row 3 (Create-order timeout)**: In `executeCreateOrder`, recover by stored `requestId` (`create-<mandate.jti>`) without duplicate record creation in `paypal_orders` (`62b585b`)
+- [x] **PRD §8.3 Row 4 (Capture timeout)**: In `PayPalGateway.captureOrder`, catch timeout and query `getOrder(orderId)`, adopting `COMPLETED` order result (`fc1dfbd`, `62b585b`)
+- [x] **PRD §8.3 Row 5 (Duplicate webhook)**: Primary-key conflict on `paypal_event_id` in `processor.ts` returns HTTP 200 with `{ duplicate: true }`, changing nothing (`62b585b`)
+- [x] **PRD §8.3 Row 6 (Webhook before capture response)**: Out-of-order `PAYMENT.CAPTURE.COMPLETED` reconciles via `gateway.getOrder` to confirm remote truth and transition to `CONFIRMED` (`62b585b`)
+- [x] **PRD §8.3 Row 7 (Amount or custom_id mismatch)**: In `returnVerifier.ts` and `processor.ts`, any difference triggers `DRIFT_FLAGGED`, emits a security ledger event, and renders a red alert (`62b585b`)
+- [x] Added unit tests: `tests/unit/paypal-gateway.test.ts`, `tests/unit/paypal-verifier.test.ts`, `tests/unit/checkout-return.test.ts`, `tests/unit/prd83-failure-paths.test.ts` (19/19 tests green)
 
 ### Tested
 - `npm run lint` -> Passed (✔ No ESLint warnings or errors)
 - `npm run typecheck` -> Passed (0 errors)
-- `npm test` -> Passed (38 / 38 test files passed, 295 / 295 tests green)
+- `npm test` -> Passed (39 / 39 test files passed, 302 / 302 tests green)
 
 ### Issues / Decisions
 - Strict Mandate Anchor: PayPal order creation anchors `custom_id = proposal_hash` and `invoice_id = AGX-<proposalId>`. Return handler loads the order from PayPal via `getOrder` and validates that `amountCents` and `custom_id` match the cryptographic mandate before capture proceeds, flagging `DRIFT_FLAGGED` on mismatch.
 - Reconcile-by-GET: In accordance with PRD §8.3, if `captureOrder` times out or throws an error, `PayPalGateway` queries `ordersController.getOrder(orderId)`. If the remote order status is already `COMPLETED`, it adopts the result rather than leaving the system in an unconfirmed state.
 - Webhook Verification: `PayPalVerifier` queries `/v1/notifications/verify-webhook-signature` using the raw payload body and required transmission headers, rejecting any non-`SUCCESS` response with an error.
+- All 7 error paths from PRD §8.3 implemented and verified with automated unit tests using mocked PayPal responses. User interface renders distinct human-readable alerts for buyer cancellation, declined instruments, and financial drift.
 
 ### Next
-- Prepare for final submission and evaluation checks.
-
-
-### PRD §8.3 Failure Paths Verification
-- [x] **Row 1 (Buyer cancels)**: Implemented `cancelCheckoutProposal` (`src/rooms/execute/cancelHandler.ts`) and `POST /api/checkout/cancel`, transitioning state to `BUYER_CANCELLED`, releasing reservation, and appending `BUYER_CANCELLED` ledger event. Rendered clear warning alert in `checkout/page.tsx`.
-- [x] **Row 2 (Capture declined)**: Implemented readable error message for `INSTRUMENT_DECLINED` / `DECLINED` in `/api/checkout/capture-order` and `checkout/page.tsx`, marking state as `CAPTURE_FAILED` and appending `PAYPAL_ORDER_CAPTURE_FAILED` to ledger.
-- [x] **Row 3 (Create-order timeout)**: In `executeCreateOrder`, recover by stored `requestId` (`create-<mandate.jti>`) without duplicate record creation in `paypal_orders`.
-- [x] **Row 4 (Capture timeout)**: In `PayPalGateway.captureOrder`, catch timeout and query `getOrder(orderId)`, adopting `COMPLETED` order result.
-- [x] **Row 5 (Duplicate webhook)**: Primary-key conflict on `paypal_event_id` in `processor.ts` returns HTTP 200 with `{ duplicate: true }`, changing nothing.
-- [x] **Row 6 (Webhook before capture response)**: Out-of-order `PAYMENT.CAPTURE.COMPLETED` reconciles via `gateway.getOrder` to confirm remote truth and transition to `CONFIRMED`.
-- [x] **Row 7 (Amount or custom_id mismatch)**: In `returnVerifier.ts` and `processor.ts`, any difference triggers `DRIFT_FLAGGED`, emits a security ledger event, and renders a red alert.
-- [x] Added `tests/unit/prd83-failure-paths.test.ts` (all 7 rows tested with mocked PayPal responses, 7/7 passing).
+- Project submission preparation and final review.
