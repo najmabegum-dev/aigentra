@@ -39,7 +39,7 @@ AIGENTRA is an authority gate between autonomous AI shopping agents and PayPal O
 - **Database**: Drizzle ORM with dual-mode storage:
   - Local embedded zero-config **PGlite** (in `.data/`)
   - Production **PostgreSQL** (e.g. Neon)
-- **AI & Models**: Vercel AI SDK (`@ai-sdk/google`) with Gemini 2.0 Flash (with deterministic replay fallback)
+- **AI & Models**: Vercel AI SDK (`@ai-sdk/google`) with Gemini 2.0 Flash (`gemini-2.0-flash`) default (with deterministic offline replay fallback)
 - **Payments**: `@paypal/paypal-server-sdk` (v2.5.0, Orders v2 Sandbox API)
 - **Cryptography**: `jose` (EdDSA JWS), `canonicalize` (RFC 8785), Node.js `crypto` (HMAC / SHA-256)
 - **Testing**: Vitest + `fast-check` (property-based testing)
@@ -66,10 +66,12 @@ cp .env.example .env.local
 ```
 
 Key environment variables:
-- `PAYMENT_MODE`: `"dev_stub"` for offline/testing or `"paypal"` for live PayPal Sandbox.
+- `PAYMENT_MODE`: `"dev_stub"` for offline/testing or `"paypal"` for live PayPal Sandbox (required in production).
 - `PAYPAL_CLIENT_ID` & `PAYPAL_CLIENT_SECRET`: PayPal Developer REST App credentials (server-only).
 - `PAYPAL_WEBHOOK_ID`: PayPal Sandbox Webhook ID for signature verification.
-- `GEMINI_API_KEY`: Google AI Studio API key (optional; system gracefully uses Replay mode if omitted).
+- `MANDATE_SIGNING_PRIVATE_KEY` & `MANDATE_SIGNING_PUBLIC_KEY`: Ed25519 key pair for cryptographic Authority Mandates (generate with `npm run keys:generate`).
+- `AI_PROVIDER`: Default `"gemini"`.
+- `GEMINI_API_KEY`: Google AI Studio API key for `gemini-2.0-flash` (optional; system gracefully falls back to deterministic Replay mode if omitted).
 - `CHANNEL3_API_KEY`: Channel3 API key (optional; falls back to seeded catalog).
 - `DATABASE_URL`: PostgreSQL connection string (optional; falls back to embedded PGlite in `.data/`).
 
