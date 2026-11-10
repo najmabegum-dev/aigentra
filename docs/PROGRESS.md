@@ -776,7 +776,44 @@
 - Strict Honesty: Replaced any legacy unverified retention claims with factual disclosures: AP2-inspired (not AP2-compliant), sandbox settlement stand-in, and in-memory test dev stubs.
 
 ### Next
+- Phase 28: Redesign DecisionCard and AuthorityRail UI components.
+
+---
+
+## Phase 28: Redesign DecisionCard and AuthorityRail UI Components
+- Status: Done
+- Branch: feat/ui-decision-card-authority-rail
+
+### Checklist
+- [x] Wrote automated unit tests for DecisionCard and AuthorityRail (`tests/unit/decision-card-authority-rail.test.ts`) (943b6d3)
+- [x] Redesigned `DecisionCard` (`src/ui/agent-workspace/DecisionCard.tsx`):
+  - Very large verdict header with distinct semantic colors (`ALLOW` in emerald, `REQUIRE_APPROVAL` in amber, `DENY` in rose)
+  - Amount formatted in large tabular numerals (`font-mono text-3xl sm:text-4xl font-black tabular-nums`) with clear "Verified Server-Side" badge
+  - Monospace reason-code chips with contextual color differentiation
+  - Rules checklist animated with `motion/react` staggered reveals and `useReducedMotion` support
+  - RFC 8785 SHA-256 canonical hash chip with one-click copy and Sonner toast notification
+- [x] Redesigned `AuthorityRail` (`src/ui/checkout/AuthorityRail.tsx`):
+  - Five connected nodes representing the complete financial lifecycle: Policy decision, AIGENTRA approval, PayPal buyer consent, Capture, Webhook confirmed and ledger sealed
+  - Responsive continuous connecting track that dynamically fills with a gradient bar as states complete
+  - Prominent jurisdiction badges labelling AIGENTRA vs PayPal for clear two-tier separation
+  - Formatted timestamps for executed steps and clear active / pending / failed states
+  - Pulsing animated active step indicator with radar ping ring
+- [x] Maintained exact props interface and 100% backwards compatibility with zero changes to business logic or API contracts
+
+### Tested
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm test tests/unit/decision-card-authority-rail.test.ts` -> Passed (5 / 5 tests green)
+- `npm test tests/integration/proposals-api.test.ts tests/integration/sidebar-links.test.ts` -> Passed (7 / 7 tests green)
+
+### Issues / Decisions
+- Component Isolation: Redesigns preserved exact prop types (`DecisionCardProps`, `AuthorityRailProps`), allowing immediate drop-in replacement across `/agent` and `/checkout` routes without breaking existing data flows.
+- Visual Distinction: Clearly segregated AIGENTRA (Autonomous Gate) jurisdiction from PayPal (Financial Execution) with dedicated badge chips, aligning with PRD §10.3 and Golden Rule 1.
+- Accessibility & Motion: Applied `useReducedMotion()` from `motion/react` so that stagger animations and pulsing indicators gracefully adapt to user accessibility preferences.
+
+### Next
 - Complete end-to-end user workflows and prepare hackathon submission materials.
+
 
 
 
