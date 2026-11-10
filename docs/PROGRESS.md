@@ -666,8 +666,8 @@
 ### Checklist
 - [x] F1: Implemented shared `getSpendState(workspaceId, policyTimezone, now, excludeProposalId)` reading real `killSwitch` from `workspaces`, calculating calendar-day `daily_captured_cents` and active `daily_reserved_cents` (excluding current proposal). Wired into proposals evaluation and checkout execution (`executeCreateOrder`, `executeCaptureOrder`). Added tests in `tests/unit/spend-state.test.ts`. (`32d604b`)
 - [x] F2: In `executeCaptureOrder`, enforced pre-validation before consuming the single-use mandate: loads bound `paypal_orders` record (throws `ORDER_NOT_BOUND` if unbound or assigned to different proposal), calls `verifyReturnOrder` with `gateway.getOrder` requiring `APPROVED`/`COMPLETED`, matching amount and `custom_id` (throws on drift/tamper), and re-evaluates policy with live spend state before consuming mandate. Added tests in `tests/unit/capture-prevalidation.test.ts`. (`e11058f`)
-- [x] F3: In `mandates.ts`, read env variables `MANDATE_SIGNING_PRIVATE_KEY` and `MANDATE_SIGNING_PUBLIC_KEY` with `\n` normalization. Made production strictly fail to start if keys are missing or invalid (no silent ephemeral keys in production). Added `npm run keys:generate` script outputting single-line formatted Ed25519 key pairs. Added tests in `tests/unit/mandates-production.test.ts`.
-- [ ] F4: Strict failure in production when PayPalGateway cannot initialize.
+- [x] F3: In `mandates.ts`, read env variables `MANDATE_SIGNING_PRIVATE_KEY` and `MANDATE_SIGNING_PUBLIC_KEY` with `\n` normalization. Made production strictly fail to start if keys are missing or invalid (no silent ephemeral keys in production). Added `npm run keys:generate` script outputting single-line formatted Ed25519 key pairs. Added tests in `tests/unit/mandates-production.test.ts`. (`1da574b`)
+- [x] F4: In `getPaymentGateway()`, when `PAYMENT_MODE` is `paypal` (or `paypal_sandbox`), strictly throw in production (`NODE_ENV === "production"`) if `PayPalGateway` cannot initialize; never fall back to `DevStubGateway` in production. Added tests in `tests/unit/paypal-gateway.test.ts`.
 - [ ] F5: Reword landing page disclosure regarding workspace retention.
 - [ ] F6: Add `src/middleware.ts` with rate limiter and security headers.
 - [ ] F7: Generic 500 error responses masking internal details from clients.
@@ -676,14 +676,14 @@
 ### Tested
 - `npm run lint` -> Passed (✔ No ESLint warnings or errors)
 - `npm run typecheck` -> Passed (0 errors)
-- `npx vitest run tests/unit/mandates-production.test.ts` -> Passed (4 / 4 tests green)
-- `npx vitest run tests/unit/mandates.test.ts` -> Passed (9 / 9 tests green)
+- `npx vitest run tests/unit/paypal-gateway.test.ts` -> Passed (7 / 7 tests green)
 
 ### Issues / Decisions
 - Spend State: Real spend tracking aggregates captured proposals within the current calendar day calculated in the policy's configured timezone (`policyTimezone`), and active reservations (`MANDATED`, `ORDER_CREATED`, `BUYER_APPROVED`). Passing `excludeProposalId` prevents double-counting the proposal currently undergoing checkout execution against the daily cap.
 - Order Pre-Validation Sequence (F2): Validating the bound order in `paypal_orders` and verifying return status, amounts, and `custom_id` via `gateway.getOrder` BEFORE consuming the mandate prevents burning single-use cryptographic tokens when external errors or drift occur.
 - Production Mandate Keys (F3): Strict fail-fast behavior in production if `MANDATE_SIGNING_PRIVATE_KEY` or `MANDATE_SIGNING_PUBLIC_KEY` is missing or invalid. Ephemeral keys are allowed only when `NODE_ENV !== "production"`. `npm run keys:generate` produces Ed25519 key pairs formatted with escaped `\n` for copy-paste deployment.
+- Payment Gateway Production Invariant (F4): `getPaymentGateway` strictly rejects initialization failures with an exception when `NODE_ENV === "production"` and `PAYMENT_MODE === "paypal"`, prohibiting silent fallback to `DevStubGateway`.
 - Canonical sorting tie-breaker: Strengthened item canonicalization with tie-breaking comparators on merchant domain, price, and quantity to ensure invariant hashing even when duplicate SKUs are present in a cart.
 
 ### Next
-- F4: Strict failure in production when PayPalGateway cannot initialize.
+- F5: Reword landing page disclosure regarding workspace retention.

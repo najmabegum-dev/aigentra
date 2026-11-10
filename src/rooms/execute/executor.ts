@@ -25,22 +25,40 @@ import { appendEvent } from "@/rooms/verify/ledger";
 let activeGateway: PaymentGateway | null = null;
 
 /**
+ * Resets active gateway instance for test isolation.
+ */
+export function _resetPaymentGatewayForTesting(): void {
+  activeGateway = null;
+}
+
+/**
  * Returns the configured Payment Gateway instance.
  * PRD §8.1: Selects PayPalGateway if PAYMENT_MODE === "paypal" or "paypal_sandbox".
  * Defaults to DevStubGateway for dev_stub mode and automated testing.
+ *
+ * In production (NODE_ENV === "production"), if PAYMENT_MODE is "paypal" and
+ * PayPalGateway cannot initialize, it strictly throws an error and never falls back to DevStubGateway.
  */
 export function getPaymentGateway(): PaymentGateway {
   if (activeGateway) {
     return activeGateway;
   }
 
+  const isProduction = process.env.NODE_ENV === "production";
   const mode = process.env.PAYMENT_MODE || "dev_stub";
   if (mode === "paypal" || mode === "paypal_sandbox") {
     try {
       activeGateway = new PayPalGateway();
       return activeGateway;
     } catch (err) {
-      console.error("Failed to initialize PayPalGateway, falling back to DevStubGateway:", err);
+      if (isProduction) {
+        throw new Error(
+          `Failed to initialize PayPalGateway in production: ${
+            err instanceof Error ? err.message : String(err)
+          }. Falling back to DevStubGateway is forbidden in production.`
+        );
+      }
+      console.error("Failed to initialize PayPalGateway, falling back to DevStubGateway in non-production:", err);
       activeGateway = new DevStubGateway();
       return activeGateway;
     }

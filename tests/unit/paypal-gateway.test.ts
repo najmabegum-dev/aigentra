@@ -1,5 +1,9 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { PayPalGateway } from "@/rooms/execute/paypalGateway";
+import {
+  getPaymentGateway,
+  _resetPaymentGatewayForTesting,
+} from "@/rooms/execute/executor";
 import { VerifiedMandate } from "@/rooms/authorize/types";
 import { GatewayCreateOrderInput } from "@/rooms/execute/types";
 
@@ -217,5 +221,39 @@ describe("PayPalGateway (PRD §8.2, §8.3)", () => {
     await expect(
       gateway.captureOrder(dummyMandate, "ORDER-PP-123", "capture-ORDER-PP-123")
     ).rejects.toThrow("Network failure");
+  });
+
+  describe("getPaymentGateway Initialization & Production Strictness (F4)", () => {
+    const originalEnv = { ...process.env };
+
+    beforeEach(() => {
+      _resetPaymentGatewayForTesting();
+    });
+
+    afterEach(() => {
+      process.env = { ...originalEnv };
+      _resetPaymentGatewayForTesting();
+    });
+
+    it("throws in production when PAYMENT_MODE is paypal and PayPalGateway fails to initialize", () => {
+      (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+      process.env.PAYMENT_MODE = "paypal";
+      delete process.env.PAYPAL_CLIENT_ID;
+      delete process.env.PAYPAL_CLIENT_SECRET;
+
+      expect(() => getPaymentGateway()).toThrow(
+        /Failed to initialize PayPalGateway in production.*Falling back to DevStubGateway is forbidden in production/
+      );
+    });
+
+    it("falls back to DevStubGateway in non-production when PayPalGateway fails to initialize", () => {
+      (process.env as Record<string, string | undefined>).NODE_ENV = "test";
+      process.env.PAYMENT_MODE = "paypal";
+      delete process.env.PAYPAL_CLIENT_ID;
+      delete process.env.PAYPAL_CLIENT_SECRET;
+
+      const gw = getPaymentGateway();
+      expect(gw.mode).toBe("dev_stub");
+    });
   });
 });
