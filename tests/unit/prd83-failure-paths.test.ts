@@ -149,7 +149,16 @@ describe("PRD §8.3 Error Handling Matrix (All 7 Situations)", () => {
     const mockDeclinedGateway = {
       mode: "paypal_sandbox" as const,
       createOrder: async () => ({} as any),
-      getOrder: async () => ({} as any),
+      getOrder: async () => ({
+        orderId,
+        status: "APPROVED" as const,
+        amountCents: mandate.amountCents,
+        currency: "USD",
+        customId: mandate.proposalHash,
+        source: "paypal_sandbox" as const,
+        label: "PayPal Sandbox",
+        rawResponse: {},
+      }),
       captureOrder: async () => ({
         captureId: `CAP-DECLINED-${Date.now()}`,
         orderId,
@@ -194,7 +203,16 @@ describe("PRD §8.3 Error Handling Matrix (All 7 Situations)", () => {
     const expectedOrderId = `ORDER-RECOVERED-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const mockTimeoutGateway = {
       mode: "paypal_sandbox" as const,
-      getOrder: async () => ({} as any),
+      getOrder: async () => ({
+        orderId,
+        status: "APPROVED" as const,
+        amountCents: mandate.amountCents,
+        currency: "USD",
+        customId: mandate.proposalHash,
+        source: "paypal_sandbox" as const,
+        label: "PayPal Sandbox",
+        rawResponse: {},
+      }),
       captureOrder: async () => ({} as any),
       createOrder: async (_mandate: VerifiedMandate, input: any) => {
         attempts++;

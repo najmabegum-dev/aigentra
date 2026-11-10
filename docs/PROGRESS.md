@@ -664,8 +664,8 @@
 - Branch: fix/pglite-next-config
 
 ### Checklist
-- [x] F1: Implemented shared `getSpendState(workspaceId, policyTimezone, now, excludeProposalId)` reading real `killSwitch` from `workspaces`, calculating calendar-day `daily_captured_cents` and active `daily_reserved_cents` (excluding current proposal). Wired into proposals evaluation and checkout execution (`executeCreateOrder`, `executeCaptureOrder`). Added tests in `tests/unit/spend-state.test.ts`.
-- [ ] F2: Capture order validation before mandate consumption (load order bound to proposal, verify status/amount/custom_id via getOrder, re-run policy).
+- [x] F1: Implemented shared `getSpendState(workspaceId, policyTimezone, now, excludeProposalId)` reading real `killSwitch` from `workspaces`, calculating calendar-day `daily_captured_cents` and active `daily_reserved_cents` (excluding current proposal). Wired into proposals evaluation and checkout execution (`executeCreateOrder`, `executeCaptureOrder`). Added tests in `tests/unit/spend-state.test.ts`. (`32d604b`)
+- [x] F2: In `executeCaptureOrder`, enforced pre-validation before consuming the single-use mandate: loads bound `paypal_orders` record (throws `ORDER_NOT_BOUND` if unbound or assigned to different proposal), calls `verifyReturnOrder` with `gateway.getOrder` requiring `APPROVED`/`COMPLETED`, matching amount and `custom_id` (throws on drift/tamper), and re-evaluates policy with live spend state before consuming mandate. Added tests in `tests/unit/capture-prevalidation.test.ts`.
 - [ ] F3: Production failure on missing Ed25519 mandate keys in mandates.ts and `keys:generate` script.
 - [ ] F4: Strict failure in production when PayPalGateway cannot initialize.
 - [ ] F5: Reword landing page disclosure regarding workspace retention.
@@ -677,11 +677,14 @@
 - `npm run lint` -> Passed (✔ No ESLint warnings or errors)
 - `npm run typecheck` -> Passed (0 errors)
 - `npx vitest run tests/unit/spend-state.test.ts` -> Passed (4 / 4 tests green)
-- `npx vitest run tests/property/engine.property.test.ts` -> Passed (2 / 2 tests green)
+- `npx vitest run tests/unit/capture-prevalidation.test.ts` -> Passed (3 / 3 tests green)
+- `npx vitest run tests/unit/prd83-failure-paths.test.ts` -> Passed (7 / 7 tests green)
+- `npx vitest run tests/unit/gateway-executor.test.ts` -> Passed (5 / 5 tests green)
 
 ### Issues / Decisions
 - Spend State: Real spend tracking aggregates captured proposals within the current calendar day calculated in the policy's configured timezone (`policyTimezone`), and active reservations (`MANDATED`, `ORDER_CREATED`, `BUYER_APPROVED`). Passing `excludeProposalId` prevents double-counting the proposal currently undergoing checkout execution against the daily cap.
+- Order Pre-Validation Sequence (F2): Validating the bound order in `paypal_orders` and verifying return status, amounts, and `custom_id` via `gateway.getOrder` BEFORE consuming the mandate prevents burning single-use cryptographic tokens when external errors or drift occur.
 - Canonical sorting tie-breaker: Strengthened item canonicalization with tie-breaking comparators on merchant domain, price, and quantity to ensure invariant hashing even when duplicate SKUs are present in a cart.
 
 ### Next
-- F2: Capture order validation before mandate consumption.
+- F3: Production failure on missing Ed25519 mandate keys in mandates.ts and `keys:generate` script.

@@ -167,7 +167,7 @@ export class DevStubGateway implements PaymentGateway {
       throw new Error(`DevStub order not found for capture: ${orderId}`);
     }
 
-    if (order.status === "DECLINED") {
+    if (order.status === "DECLINED" || (order as any).captureDeclined) {
       return {
         captureId: `DEV-DECLINE-${crypto.randomUUID().slice(0, 8)}`,
         orderId,
@@ -226,6 +226,18 @@ export class DevStubGateway implements PaymentGateway {
     const order = simulatedOrdersStore.get(orderId);
     if (order) {
       order.status = "DECLINED";
+      simulatedOrdersStore.set(orderId, order);
+    }
+  }
+
+  /**
+   * Test / dev helper: simulates buyer approval on PayPal, but payment gateway capture declining (e.g. INSTRUMENT_DECLINED).
+   */
+  simulateCaptureDecline(orderId: string): void {
+    const order = simulatedOrdersStore.get(orderId);
+    if (order) {
+      order.status = "APPROVED";
+      (order as any).captureDeclined = true;
       simulatedOrdersStore.set(orderId, order);
     }
   }

@@ -18,6 +18,7 @@ import {
 } from "./types";
 import { DevStubGateway } from "./devStub";
 import { PayPalGateway } from "./paypalGateway";
+import { verifyReturnOrder } from "./returnVerifier";
 import { appendEvent } from "@/rooms/verify/ledger";
 
 // Cached gateway singleton
@@ -277,7 +278,43 @@ export async function executeCaptureOrder(
     expectedProposalHash: mandate.proposalHash,
   });
 
-  // Re-evaluate policy with current spend state before consuming mandate
+  // 1. Order Binding Check (PRD §8.2 step 5, F2)
+  // Load paypal_orders row by paypalOrderId AND workspaceId AND proposalId = mandate.proposalId
+  const boundOrders = await db
+    .select()
+    .from(schema.paypalOrders)
+    .where(
+      and(
+        eq(schema.paypalOrders.paypalOrderId, orderId),
+        eq(schema.paypalOrders.workspaceId, mandate.workspaceId),
+        eq(schema.paypalOrders.proposalId, mandate.proposalId)
+      )
+    )
+    .limit(1);
+
+  if (boundOrders.length === 0) {
+    throw new Error(
+      `ORDER_NOT_BOUND: PayPal order ${orderId} is not bound to proposal ${mandate.proposalId} in workspace ${mandate.workspaceId}`
+    );
+  }
+  const boundOrder = boundOrders[0];
+  const internalOrderId = boundOrder.id;
+
+  // 2. Remote Order & Return Verification (PRD §8.2 step 4 & §8.3, F2)
+  // Require status APPROVED/COMPLETED, amount equal to mandate amount, and custom_id equal to proposal hash
+  const returnCheck = await verifyReturnOrder({
+    orderId,
+    mandate,
+    gateway,
+  });
+
+  if (!returnCheck.valid) {
+    throw new Error(
+      `${returnCheck.reasonCode || "DRIFT_FLAGGED"}: ${returnCheck.error || "Order verification failed before capture"}`
+    );
+  }
+
+  // 3. Re-evaluate policy with current spend state before consuming mandate
   const proposalRows = await db
     .select()
     .from(schema.proposals)
@@ -333,7 +370,7 @@ export async function executeCaptureOrder(
     );
   }
 
-  // 2. Atomically consume the mandate BEFORE the capture call (PRD §8.2 step 5)
+  // 4. Atomically consume the mandate BEFORE the capture call (PRD §8.2 step 5)
   const consumeResult = await consumeMandate(mandate, db);
   if (!consumeResult.success) {
     throw new Error(
@@ -341,18 +378,9 @@ export async function executeCaptureOrder(
     );
   }
 
-  // 3. Persist capture idempotency key
+  // 5. Persist capture idempotency key
   const requestId = `capture-${orderId}`;
   const internalCaptureId = `pcap_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
-
-  // Find corresponding internal order
-  const orders = await db
-    .select()
-    .from(schema.paypalOrders)
-    .where(eq(schema.paypalOrders.paypalOrderId, orderId))
-    .limit(1);
-
-  const internalOrderId = orders.length > 0 ? orders[0].id : orderId;
 
   // 4. Call Payment Gateway
   let result: GatewayCaptureResult;

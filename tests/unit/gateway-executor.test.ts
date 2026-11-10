@@ -313,8 +313,8 @@ describe("Payment Gateway Interface & Executor Service (PRD §8, §5.2)", () => 
       cancelUrl: "http://localhost:3000/checkout?cancel=true",
     });
 
-    // 2. Simulate buyer decline or risk hold on payment gateway
-    gateway.simulateBuyerDecline(orderRes.orderId);
+    // 2. Simulate capture decline (e.g. INSTRUMENT_DECLINED) on payment gateway
+    gateway.simulateCaptureDecline(orderRes.orderId);
 
     // 3. Attempt capture
     const captureRes = await executeCaptureOrder({
