@@ -176,7 +176,7 @@ export default function HomePage() {
           </div>
 
           <div className="pt-3 border-t border-border text-[11px] text-muted-foreground leading-relaxed">
-            <strong>Honest Disclosure:</strong> This application runs in PayPal Sandbox mode with synthetic test funds. We are AP2-inspired, not AP2-compliant. Anonymous visitor workspaces are isolated and auto-purged after 14 days.
+            <strong>Honest Disclosure:</strong> This application runs in PayPal Sandbox mode with synthetic test funds. We are AP2-inspired, not AP2-compliant. Anonymous visitor workspaces are cryptographically isolated with signed session cookies and mandatory workspace-scoped data boundaries.
           </div>
         </div>
       </main>
