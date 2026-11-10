@@ -721,5 +721,33 @@
 - Primitives: Added 13 accessible shadcn/ui React 18 primitives in `src/ui/` with full TypeScript strict typing and zero changes to existing business logic or API contracts.
 
 ### Next
+- Phase 26: Rebuild App Shell, Collapsible Left Rail, Header & Command Palette.
+
+---
+
+## Phase 26: Rebuild App Shell, Collapsible Left Rail, Header & Command Palette
+- Status: Done
+- Branch: feat/ui-app-shell-navigation
+
+### Checklist
+- [x] Implemented global Command Palette (`src/ui/command-palette.tsx`) with Ctrl/Cmd+K shortcuts, search across all 6 workspace modules, workspace ID copy, and theme toggle actions
+- [x] Rebuilt Header (`src/ui/header.tsx`) with brand wordmark, command palette trigger button (`⌘K`), active status pill (`GUARD ACTIVE`), workspace chip with copy button and Sonner toast feedback, and theme toggle
+- [x] Rebuilt Sidebar (`src/ui/sidebar.tsx`) as a slim collapsible left rail (expanded 224px / collapsed 64px) with left-edge active state indicator, tooltips on collapsed rail, and persistent authority rail summary
+- [x] Implemented mobile-responsive navigation under 768px (`< md`): fixed bottom navigation bar with micro-labels and full drawer `Sheet` accessible via hamburger trigger
+- [x] Updated AppShell (`src/ui/app-shell.tsx`) orchestrating slim 32px banner, header, collapsible left rail, mobile drawer sheet, and command palette
+- [x] Preserved all route URLs and exported `NAVIGATION_ITEMS` (`/policies`, `/agent`, `/approvals`, `/studio`, `/attack-lab`, `/settings`)
+
+### Tested
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm test tests/integration/sidebar-links.test.ts` -> Passed (3 / 3 tests green, all 6 routes resolved with HTTP 200)
+
+### Issues / Decisions
+- Dual-Mode Mobile Navigation: On viewports `< md`, the rail seamlessly transforms into a 56px fixed bottom thumb-navigation bar while maintaining a slide-over `Sheet` for comprehensive module descriptions.
+- Collapsible Left Rail: Collapses down to 64px icon-only rail with Radix Tooltip hover descriptions and indicator dots, giving maximum screen real estate to workspace tools.
+- Command Palette: Built with `@/ui/command` (cmdk) enabling instant keyboard navigation across all modules via `⌘K` or `Ctrl+K`.
+
+### Next
 - Complete end-to-end user workflows and prepare hackathon submission materials.
+
 
