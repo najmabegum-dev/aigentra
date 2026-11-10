@@ -692,4 +692,34 @@
 - Canonical sorting tie-breaker: Strengthened item canonicalization with tie-breaking comparators on merchant domain, price, and quantity to ensure invariant hashing even when duplicate SKUs are present in a cart.
 
 ### Next
-- Complete end-to-end verification and prepare for hackathon submission.
+- Phase 25: Dark-First Design Tokens, Shadcn UI Components & Slim Status Bar.
+
+---
+
+## Phase 25: Dark-First Design Tokens, Shadcn UI Components & Slim Status Bar
+- Status: Done
+- Branch: feat/ui-design-tokens-shadcn
+
+### Checklist
+- [x] Installed `geist`, `motion`, `sonner`, `@radix-ui/react-*`, and `cmdk`
+- [x] Implemented shadcn/ui components in `src/ui/`: `button`, `card`, `badge`, `input`, `label`, `tabs`, `tooltip`, `dialog`, `sheet`, `skeleton`, `command`, `separator`, `switch`
+- [x] Loaded Geist Sans and Geist Mono with `next/font` in `layout.tsx` and wired them to Tailwind font families
+- [x] Implemented dark-first design tokens in `globals.css` with deep navy surfaces, single blue accent, semantic allow/approval/deny/info status colors, soft shadows, radius scale, and tabular numbers utility, while maintaining full light theme compatibility
+- [x] Replaced two full-width banners with one slim 32px status bar featuring `SANDBOX` pill and conditional `DEV STUB` pill (`src/ui/banners.tsx`)
+- [x] Added Sonner Toaster in `layout.tsx` and created `src/ui/sonner.tsx` wrapper
+- [x] Captured before and after screenshots of landing page (`docs/screenshots/before-landing.png`, `docs/screenshots/after-landing.png`)
+
+### Tested
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm test` -> Passed (43 / 43 test files passed, 320 / 320 tests green)
+
+### Issues / Decisions
+- Dark-First Foundation: Configured `:root` and `.dark` with deep navy surfaces (`#060B14`, `#0B1324`, `#101B33`) and one clear blue accent (`#3B82F6`), while keeping `.light` fully functional with clean contrast.
+- Slim Status Bar: Replaced 80px dual full-width banners with a single 32px (`h-8`) status bar containing a glowing `SANDBOX` pill, optional `DEV STUB` pill when `paymentMode="dev_stub"`, and security gateway status badge.
+- Typography: Geist Sans and Geist Mono loaded via `geist/font/sans` and `geist/font/mono` using Next.js local font loader, mapped to `font-sans` and `font-mono`.
+- Primitives: Added 13 accessible shadcn/ui React 18 primitives in `src/ui/` with full TypeScript strict typing and zero changes to existing business logic or API contracts.
+
+### Next
+- Complete end-to-end user workflows and prepare hackathon submission materials.
+

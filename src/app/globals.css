@@ -2,47 +2,157 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #F7F8FA;
-  --foreground: #0B1220;
-  --surface: #FFFFFF;
-  --surface-raised: #FFFFFF;
-  --ink: #0B1220;
-  --muted: #F1F3F7;
-  --muted-foreground: #5B6475;
-  --border: #E2E8F0;
-  --primary: #2F5BFF;
-  --primary-foreground: #FFFFFF;
-  --status-allow: #0E9F6E;
-  --status-approval: #D97706;
-  --status-deny: #DC2626;
-  --status-info: #2563EB;
-  --status-sandbox: #6D28D9;
+@layer base {
+  :root {
+    /* =========================================================================
+     * Dark-First Theme Tokens (Deep Navy Surfaces, One Blue Accent)
+     * ========================================================================= */
+    --background: #060B14;
+    --foreground: #F1F5F9;
+
+    /* Deep Navy Surfaces */
+    --surface: #0B1324;
+    --surface-raised: #101B33;
+    --surface-overlay: #172647;
+
+    --card: #0B1324;
+    --card-foreground: #F1F5F9;
+    --popover: #0B1324;
+    --popover-foreground: #F1F5F9;
+    --ink: #F1F5F9;
+
+    /* One Clean Blue Accent */
+    --primary: #3B82F6;
+    --primary-foreground: #FFFFFF;
+
+    /* Muted & Secondary Neutrals */
+    --secondary: #13203C;
+    --secondary-foreground: #E2E8F0;
+    --muted: #13203C;
+    --muted-foreground: #8B9BB4;
+    --accent: #172647;
+    --accent-foreground: #F8FAFC;
+
+    /* Borders & Rings */
+    --border: #1B2B4A;
+    --input: #1B2B4A;
+    --ring: #3B82F6;
+
+    /* Destructive */
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+
+    /* Semantic Status Colors (WCAG AA Compliant) */
+    --status-allow: #10B981;
+    --status-approval: #F59E0B;
+    --status-deny: #EF4444;
+    --status-info: #3B82F6;
+    --status-sandbox: #8B5CF6;
+
+    /* Radius Scale */
+    --radius: 0.5rem;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.625rem;
+    --radius-xl: 0.875rem;
+  }
+
+  .dark {
+    --background: #060B14;
+    --foreground: #F1F5F9;
+    --surface: #0B1324;
+    --surface-raised: #101B33;
+    --surface-overlay: #172647;
+    --card: #0B1324;
+    --card-foreground: #F1F5F9;
+    --popover: #0B1324;
+    --popover-foreground: #F1F5F9;
+    --ink: #F1F5F9;
+    --primary: #3B82F6;
+    --primary-foreground: #FFFFFF;
+    --secondary: #13203C;
+    --secondary-foreground: #E2E8F0;
+    --muted: #13203C;
+    --muted-foreground: #8B9BB4;
+    --accent: #172647;
+    --accent-foreground: #F8FAFC;
+    --border: #1B2B4A;
+    --input: #1B2B4A;
+    --ring: #3B82F6;
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+    --status-allow: #10B981;
+    --status-approval: #F59E0B;
+    --status-deny: #EF4444;
+    --status-info: #3B82F6;
+    --status-sandbox: #8B5CF6;
+  }
+
+  .light {
+    --background: #F8FAFC;
+    --foreground: #0B1220;
+    --surface: #FFFFFF;
+    --surface-raised: #FFFFFF;
+    --surface-overlay: #F1F5F9;
+    --card: #FFFFFF;
+    --card-foreground: #0B1220;
+    --popover: #FFFFFF;
+    --popover-foreground: #0B1220;
+    --ink: #0B1220;
+    --primary: #2563EB;
+    --primary-foreground: #FFFFFF;
+    --secondary: #F1F5F9;
+    --secondary-foreground: #0B1220;
+    --muted: #F1F5F9;
+    --muted-foreground: #64748B;
+    --accent: #F1F5F9;
+    --accent-foreground: #0F172A;
+    --border: #E2E8F0;
+    --input: #E2E8F0;
+    --ring: #2563EB;
+    --destructive: #DC2626;
+    --destructive-foreground: #FFFFFF;
+    --status-allow: #059669;
+    --status-approval: #D97706;
+    --status-deny: #DC2626;
+    --status-info: #2563EB;
+    --status-sandbox: #6D28D9;
+  }
 }
 
-.dark {
-  --background: #0B1220;
-  --foreground: #F7F8FA;
-  --surface: #131C2E;
-  --surface-raised: #1A243B;
-  --ink: #F7F8FA;
-  --muted: #1E293B;
-  --muted-foreground: #94A3B8;
-  --border: #23314D;
-  --primary: #3B82F6;
-  --primary-foreground: #FFFFFF;
-  --status-allow: #10B981;
-  --status-approval: #F59E0B;
-  --status-deny: #EF4444;
-  --status-info: #3B82F6;
-  --status-sandbox: #7C3AED;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    transition: background-color 150ms ease, color 150ms ease;
+  }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  transition: background-color 150ms ease, color 150ms ease;
+/* Utilities: Tabular numbers, soft shadows & glow */
+@layer utilities {
+  .tabular-nums, .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  .shadow-soft-sm {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.25);
+  }
+
+  .shadow-soft-md {
+    box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.45), 0 2px 6px -1px rgba(0, 0, 0, 0.3);
+  }
+
+  .shadow-soft-lg {
+    box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.55), 0 4px 12px -2px rgba(0, 0, 0, 0.35);
+  }
+
+  .shadow-glow-blue {
+    box-shadow: 0 0 20px -3px rgba(59, 130, 246, 0.35);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

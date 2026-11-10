@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import { Toaster } from "@/ui/sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,9 +15,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="min-h-screen flex flex-col antialiased">
+    <html lang="en" className={`dark ${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="min-h-screen flex flex-col font-sans antialiased bg-background text-foreground">
         <main className="flex-1 flex flex-col">{children}</main>
+        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   );
