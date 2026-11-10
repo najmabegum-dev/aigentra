@@ -812,7 +812,46 @@
 - Accessibility & Motion: Applied `useReducedMotion()` from `motion/react` so that stagger animations and pulsing indicators gracefully adapt to user accessibility preferences.
 
 ### Next
+- Phase 29: Redesign Attack Lab as Red-Team Console and restyle ApprovalCentre.
+
+---
+
+## Phase 29: Redesign Attack Lab Console & ApprovalCentre
+- Status: Done
+- Branch: feat/ui-attack-lab-approval-centre
+
+### Checklist
+- [x] Wrote automated unit tests for AttackLabPage and ApprovalCentre (`tests/unit/attack-lab-approvals-ui.test.ts`) (d4a67f0)
+- [x] Restyled Attack Lab page (`src/app/(workspace)/attack-lab/page.tsx`) as a red-team command console:
+  - Deep dark console theme (`#060B14`, red-team terminal badge `RED-TEAM OPS CONSOLE`)
+  - Prominent "Run All Attacks (A1–A7)" button with live progress bar and suite percentage counter
+  - Scenario rows streaming in one-by-one with `motion/react` staggered animations and `useReducedMotion` support
+  - Pass/Fail glyphs: `[✓ DEFENDED]` and `[✗ BREACHED]`
+  - Monospace expected vs actual differential output (`EXP:` vs `ACT:`)
+  - Glowing green `PayPal calls: 0` proof chip on every threat scenario
+  - Refined adversarial execution evidence table persisted from `attack_runs`
+- [x] Restyled `ApprovalCentre` (`src/ui/approvals/ApprovalCentre.tsx`):
+  - Clearer two-column side-by-side comparison: Proposed Cart Specification vs Active Policy Guardrails
+  - Visual delta comparisons on approval threshold, cart ceilings, per-item limits, and daily spend cap
+  - SVG circular countdown expiry ring calculating remaining mandate duration with glowing indicator
+  - Big, bold action buttons: large gradient green `Approve & Issue Mandate` and large `Reject Proposal`
+  - Integrated shadcn/ui `Skeleton` loaders for smooth loading states on queue and details panels
+  - Kept all API routes, handlers, and data flows unchanged (no logic modifications)
+
+### Tested
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm test tests/unit/attack-lab-approvals-ui.test.ts` -> Passed (2 / 2 tests green)
+- `npm test tests/unit/attack-lab.test.ts tests/integration/sidebar-links.test.ts` -> Passed (11 / 11 tests green)
+
+### Issues / Decisions
+- Zero Logic Alterations: Strictly preserved all API endpoints (`/api/attack-lab/run`, `/api/attack-lab/runs`, `/api/approvals`, `/api/proposals/[id]/approve`, `/reject`, `/supersede`), state transitions, and server-side recalculation behaviors.
+- Red-Team Console Theme: Emphasized the adversarial testing narrative with tactical monospace telemetry, pass/fail terminal glyphs, and unforgeable "PayPal calls: 0" proof chips.
+- Expiry Ring: Implemented animated SVG circular progress ring visualizing the 15-minute mandate window with color degradation to red on expiration.
+
+### Next
 - Complete end-to-end user workflows and prepare hackathon submission materials.
+
 
 
 
