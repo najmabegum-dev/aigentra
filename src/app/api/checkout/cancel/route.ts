@@ -52,7 +52,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error: any) {
     console.error("Error cancelling checkout proposal:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to cancel checkout proposal." },
+      { success: false, error: "An unexpected internal server error occurred while cancelling checkout proposal." },
       { status: 500 }
     );
   }

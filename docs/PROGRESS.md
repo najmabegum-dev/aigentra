@@ -669,15 +669,14 @@
 - [x] F3: In `mandates.ts`, read env variables `MANDATE_SIGNING_PRIVATE_KEY` and `MANDATE_SIGNING_PUBLIC_KEY` with `\n` normalization. Made production strictly fail to start if keys are missing or invalid (no silent ephemeral keys in production). Added `npm run keys:generate` script outputting single-line formatted Ed25519 key pairs. Added tests in `tests/unit/mandates-production.test.ts`. (`1da574b`)
 - [x] F4: In `getPaymentGateway()`, when `PAYMENT_MODE` is `paypal` (or `paypal_sandbox`), strictly throw in production (`NODE_ENV === "production"`) if `PayPalGateway` cannot initialize; never fall back to `DevStubGateway` in production. Added tests in `tests/unit/paypal-gateway.test.ts`. (`c748708`)
 - [x] F5: Reworded landing page disclosure (`src/app/page.tsx`) to remove "auto-purged after 14 days", stating honest cryptographic session isolation and workspace-scoped data boundaries. (`be64f97`)
-- [x] F6: Added `src/middleware.ts` with in-memory sliding window rate limiter (60 req/min for general `/api`, 10 req/min for `POST /api/workspaces`, completely bypassing `/api/webhooks/paypal`), and security headers (CSP allowing Next.js, AG Studio, and PayPal frames, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`). Added tests in `tests/unit/middleware.test.ts`.
-- [ ] F7: Generic 500 error responses masking internal details from clients.
+- [x] F6: Added `src/middleware.ts` with in-memory sliding window rate limiter (60 req/min for general `/api`, 10 req/min for `POST /api/workspaces`, completely bypassing `/api/webhooks/paypal`), and security headers (CSP allowing Next.js, AG Studio, and PayPal frames, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`). Added tests in `tests/unit/middleware.test.ts`. (`b396a1b`)
+- [x] F7: Sanitized API 500 error responses across all API endpoints to return generic user-facing error messages without leaking technical error messages, internal paths, or stack traces, while logging full error details with console.error on the server side only.
 - [ ] F8: Document and pin current default Gemini model in README.
 
 ### Tested
 - `npm run lint` -> Passed (✔ No ESLint warnings or errors)
 - `npm run typecheck` -> Passed (0 errors)
-- `npx vitest run tests/unit/middleware.test.ts` -> Passed (5 / 5 tests green)
-- `npx vitest run tests/integration/health-route.test.ts` -> Passed (3 / 3 tests green)
+- `npx vitest run tests/integration/approvals-api.test.ts tests/integration/studio-data-api.test.ts` -> Passed (8 / 8 tests green)
 
 ### Issues / Decisions
 - Spend State: Real spend tracking aggregates captured proposals within the current calendar day calculated in the policy's configured timezone (`policyTimezone`), and active reservations (`MANDATED`, `ORDER_CREATED`, `BUYER_APPROVED`). Passing `excludeProposalId` prevents double-counting the proposal currently undergoing checkout execution against the daily cap.
@@ -686,7 +685,8 @@
 - Payment Gateway Production Invariant (F4): `getPaymentGateway` strictly rejects initialization failures with an exception when `NODE_ENV === "production"` and `PAYMENT_MODE === "paypal"`, prohibiting silent fallback to `DevStubGateway`.
 - Retention Claim Accuracy (F5): Replaced unverified 14-day auto-purge claim on the landing page with accurate disclosure of HMAC-signed session cookies and mandatory workspace-scoped boundaries.
 - Rate Limiting and Edge Security (F6): Implemented in-memory rate limiting with sliding windows and automatic stale bucket cleanup. Crucially, `/api/webhooks/paypal` is exempted to guarantee unhindered settlement capture from PayPal servers. Security headers protect against MIME-sniffing, clickjacking, and unauthorized origin leakage while permitting AG Studio dynamic workers and PayPal SDK frames.
+- Information Leak Prevention (F7): Replaced all occurrences of `error.message` in HTTP 500 responses with sanitized, generic plain-language error descriptions. Server-side details and diagnostics remain strictly isolated in backend logs.
 - Canonical sorting tie-breaker: Strengthened item canonicalization with tie-breaking comparators on merchant domain, price, and quantity to ensure invariant hashing even when duplicate SKUs are present in a cart.
 
 ### Next
-- F7: Generic 500 error responses masking internal details from clients.
+- F8: Document and pin current default Gemini model in README.

@@ -164,7 +164,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Failed to create proposal",
+        error: "An unexpected internal server error occurred while creating proposal.",
       },
       { status: 500 }
     );

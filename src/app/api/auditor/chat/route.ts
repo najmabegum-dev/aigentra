@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Auditor API handler error:", error);
     return NextResponse.json(
-      { ok: false, error: error.message || "Internal Auditor error" },
+      { ok: false, error: "An unexpected internal server error occurred in Auditor agent." },
       { status: 500 }
     );
   }

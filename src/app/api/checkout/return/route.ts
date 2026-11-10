@@ -70,7 +70,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error: any) {
     console.error("Error in checkout return handler:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to verify return order." },
+      { success: false, error: "An unexpected internal server error occurred while verifying return order." },
       { status: 500 }
     );
   }

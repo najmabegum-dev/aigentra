@@ -87,7 +87,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error: any) {
     console.error("Error capturing checkout order:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to capture checkout order" },
+      { success: false, error: "An unexpected internal server error occurred while capturing checkout order." },
       { status: 500 }
     );
   }

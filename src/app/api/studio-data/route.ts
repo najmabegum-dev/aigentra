@@ -135,10 +135,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
     });
   } catch (error: any) {
+    console.error("Error retrieving studio data:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to retrieve studio data",
+        error: "An unexpected internal server error occurred while retrieving studio data.",
       },
       { status: 500 }
     );

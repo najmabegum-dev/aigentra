@@ -55,7 +55,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json(
       {
         status: 500,
-        error: error instanceof Error ? error.message : "Internal webhook processing error",
+        error: "An unexpected internal server error occurred while processing webhook.",
       },
       { status: 500 }
     );
