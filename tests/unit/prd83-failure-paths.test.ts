@@ -204,7 +204,7 @@ describe("PRD §8.3 Error Handling Matrix (All 7 Situations)", () => {
     const mockTimeoutGateway = {
       mode: "paypal_sandbox" as const,
       getOrder: async () => ({
-        orderId,
+        orderId: expectedOrderId,
         status: "APPROVED" as const,
         amountCents: mandate.amountCents,
         currency: "USD",

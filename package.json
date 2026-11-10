@@ -12,7 +12,8 @@
     "verify:intents": "vite-node scripts/verify-golden-intents.ts",
     "db:migrate": "vite-node scripts/migrate.ts",
     "workspace:create": "node scripts/create-workspace.mjs",
-    "spike:paypal": "node scripts/spike-paypal.mjs"
+    "spike:paypal": "node scripts/spike-paypal.mjs",
+    "keys:generate": "node scripts/generate-keys.mjs"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.112",

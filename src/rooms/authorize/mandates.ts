@@ -27,8 +27,27 @@ let cachedKeyPair: { privateKey: KeyType; publicKey: KeyType } | null = null;
 let cachedPublicKeyPem: string | null = null;
 
 /**
+ * Resets cached keys for unit testing isolation.
+ */
+export function _resetCachedKeyPairForTesting(): void {
+  cachedKeyPair = null;
+  cachedPublicKeyPem = null;
+}
+
+/**
+ * Normalizes PEM string handling escaped newlines (\n) from single-line env definitions.
+ */
+function normalizePem(pem: string): string {
+  return pem.replace(/\\n/g, "\n").trim();
+}
+
+/**
  * Initializes or retrieves the server-side Ed25519 signing and verification keys.
  * Golden Rule 10: Secrets never leave the server.
+ *
+ * In production (NODE_ENV === "production"), MANDATE_SIGNING_PRIVATE_KEY and
+ * MANDATE_SIGNING_PUBLIC_KEY MUST be configured and valid, or the server fails to start.
+ * Ephemeral keys are strictly forbidden in production.
  */
 async function getKeyPair(): Promise<{
   privateKey: KeyType;
@@ -38,21 +57,39 @@ async function getKeyPair(): Promise<{
     return cachedKeyPair;
   }
 
-  const envKeyPem = process.env.MANDATE_SIGNING_KEY_PEM;
+  const isProduction = process.env.NODE_ENV === "production";
+  const rawPrivate =
+    process.env.MANDATE_SIGNING_PRIVATE_KEY || process.env.MANDATE_SIGNING_KEY_PEM;
+  const rawPublic =
+    process.env.MANDATE_SIGNING_PUBLIC_KEY || process.env.MANDATE_PUBLIC_KEY_PEM;
 
-  if (envKeyPem && envKeyPem.trim().length > 0) {
+  if (rawPrivate && rawPublic && rawPrivate.trim().length > 0 && rawPublic.trim().length > 0) {
     try {
-      const privateKey = (await jose.importPKCS8(envKeyPem, "EdDSA")) as CryptoKey;
+      const privateKey = (await jose.importPKCS8(
+        normalizePem(rawPrivate),
+        "EdDSA"
+      )) as CryptoKey;
       const publicKey = (await jose.importSPKI(
-        process.env.MANDATE_PUBLIC_KEY_PEM || "",
+        normalizePem(rawPublic),
         "EdDSA"
       )) as CryptoKey;
 
       cachedKeyPair = { privateKey, publicKey };
       return cachedKeyPair;
-    } catch {
-      // Fall through to ephemeral key pair generation if PKCS8 import fails
+    } catch (err) {
+      if (isProduction) {
+        throw new Error(
+          `Mandate signing keys (MANDATE_SIGNING_PRIVATE_KEY / MANDATE_SIGNING_PUBLIC_KEY) are invalid in production: ${
+            err instanceof Error ? err.message : String(err)
+          }`
+        );
+      }
+      // In non-production, fall through to ephemeral key generation
     }
+  } else if (isProduction) {
+    throw new Error(
+      "Mandate signing keys (MANDATE_SIGNING_PRIVATE_KEY and MANDATE_SIGNING_PUBLIC_KEY) are missing in production. Generate keys using 'npm run keys:generate' and configure environment variables."
+    );
   }
 
   // Generate an ephemeral Ed25519 key pair for runtime / dev / test
