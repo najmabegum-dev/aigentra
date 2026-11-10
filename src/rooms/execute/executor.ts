@@ -8,6 +8,7 @@ import {
   SpendState,
 } from "@/rooms/authorize/types";
 import { evaluate } from "@/rooms/authorize/engine";
+import { getSpendState } from "@/rooms/authorize/spendState";
 import { consumeMandate, verifyMandate } from "@/rooms/authorize/mandates";
 import {
   GatewayCaptureResult,
@@ -124,11 +125,12 @@ export async function executeCreateOrder(
     total_cents: proposal.totalCents,
   };
 
-  const spendState: SpendState = {
-    kill_switch: false,
-    daily_captured_cents: 0,
-    daily_reserved_cents: 0,
-  };
+  const spendState = await getSpendState(
+    mandate.workspaceId,
+    policyRules?.timezone,
+    new Date(),
+    mandate.proposalId
+  );
 
   const evalResult = evaluate(
     proposalToEvaluate,
@@ -274,6 +276,62 @@ export async function executeCaptureOrder(
     token: mandate.rawToken,
     expectedProposalHash: mandate.proposalHash,
   });
+
+  // Re-evaluate policy with current spend state before consuming mandate
+  const proposalRows = await db
+    .select()
+    .from(schema.proposals)
+    .where(
+      and(
+        eq(schema.proposals.id, mandate.proposalId),
+        eq(schema.proposals.workspaceId, mandate.workspaceId)
+      )
+    )
+    .limit(1);
+
+  if (proposalRows.length === 0) {
+    throw new Error(`Proposal not found: ${mandate.proposalId}`);
+  }
+  const proposal = proposalRows[0];
+
+  let policyRules: PolicyRuleDefinition | null = null;
+  if (proposal.policyVersionId) {
+    const pvs = await db
+      .select()
+      .from(schema.policyVersions)
+      .where(eq(schema.policyVersions.id, proposal.policyVersionId))
+      .limit(1);
+    if (pvs.length > 0) {
+      policyRules = pvs[0].rulesJson as PolicyRuleDefinition;
+    }
+  }
+
+  const spendState = await getSpendState(
+    mandate.workspaceId,
+    policyRules?.timezone,
+    new Date(),
+    mandate.proposalId
+  );
+
+  const proposalToEvaluate: ProposalToEvaluate = {
+    workspace_id: mandate.workspaceId,
+    items: (proposal.itemsJson || []) as any,
+    currency: proposal.currency || "USD",
+    total_cents: proposal.totalCents,
+  };
+
+  const evalResult = evaluate(
+    proposalToEvaluate,
+    policyRules,
+    spendState,
+    new Date()
+  );
+
+  if (evalResult.decision === "DENY") {
+    throw new Error(
+      `Execution blocked by policy engine: ${evalResult.reason_codes.join(", ")}`
+    );
+  }
 
   // 2. Atomically consume the mandate BEFORE the capture call (PRD §8.2 step 5)
   const consumeResult = await consumeMandate(mandate, db);

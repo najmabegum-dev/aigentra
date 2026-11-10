@@ -654,4 +654,34 @@
 - All 7 error paths from PRD §8.3 implemented and verified with automated unit tests using mocked PayPal responses. User interface renders distinct human-readable alerts for buyer cancellation, declined instruments, and financial drift.
 
 ### Next
-- Project submission preparation and final review.
+- Phase 24: Production Hardening, Spend Tracking & Rate Limiting (F1-F8).
+
+
+---
+
+## Phase 24: Production Hardening, Spend Tracking & Rate Limiting
+- Status: In progress
+- Branch: fix/pglite-next-config
+
+### Checklist
+- [x] F1: Implemented shared `getSpendState(workspaceId, policyTimezone, now, excludeProposalId)` reading real `killSwitch` from `workspaces`, calculating calendar-day `daily_captured_cents` and active `daily_reserved_cents` (excluding current proposal). Wired into proposals evaluation and checkout execution (`executeCreateOrder`, `executeCaptureOrder`). Added tests in `tests/unit/spend-state.test.ts`.
+- [ ] F2: Capture order validation before mandate consumption (load order bound to proposal, verify status/amount/custom_id via getOrder, re-run policy).
+- [ ] F3: Production failure on missing Ed25519 mandate keys in mandates.ts and `keys:generate` script.
+- [ ] F4: Strict failure in production when PayPalGateway cannot initialize.
+- [ ] F5: Reword landing page disclosure regarding workspace retention.
+- [ ] F6: Add `src/middleware.ts` with rate limiter and security headers.
+- [ ] F7: Generic 500 error responses masking internal details from clients.
+- [ ] F8: Document and pin current default Gemini model in README.
+
+### Tested
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npx vitest run tests/unit/spend-state.test.ts` -> Passed (4 / 4 tests green)
+- `npx vitest run tests/property/engine.property.test.ts` -> Passed (2 / 2 tests green)
+
+### Issues / Decisions
+- Spend State: Real spend tracking aggregates captured proposals within the current calendar day calculated in the policy's configured timezone (`policyTimezone`), and active reservations (`MANDATED`, `ORDER_CREATED`, `BUYER_APPROVED`). Passing `excludeProposalId` prevents double-counting the proposal currently undergoing checkout execution against the daily cap.
+- Canonical sorting tie-breaker: Strengthened item canonicalization with tie-breaking comparators on merchant domain, price, and quantity to ensure invariant hashing even when duplicate SKUs are present in a cart.
+
+### Next
+- F2: Capture order validation before mandate consumption.

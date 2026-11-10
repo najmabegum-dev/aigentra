@@ -5,6 +5,7 @@ import * as schema from "@/lib/db/schema";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { buildProposalFromItems, formatDecisionCard } from "@/rooms/propose/proposalService";
 import { evaluate } from "@/rooms/authorize/engine";
+import { getSpendState } from "@/rooms/authorize/spendState";
 import { PolicyRuleDefinition, SpendState } from "@/rooms/authorize/types";
 import { appendEvent } from "@/rooms/verify/ledger";
 
@@ -80,11 +81,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         .limit(1)
     )[0];
 
-    const spendState: SpendState = {
-      kill_switch: workspace?.killSwitch ?? false,
-      daily_captured_cents: 0,
-      daily_reserved_cents: 0,
-    };
+    const spendState = await getSpendState(workspaceId, policyRules?.timezone, new Date());
+
+
+
+
 
     // 4. Deterministic policy evaluation (PRD §6.2)
     const evaluation = evaluate(proposalToEvaluate, policyRules, spendState, new Date());

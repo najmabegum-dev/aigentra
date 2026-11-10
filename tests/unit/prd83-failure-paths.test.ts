@@ -17,9 +17,18 @@ describe("PRD §8.3 Error Handling Matrix (All 7 Situations)", () => {
   beforeAll(async () => {
     process.env.PAYMENT_MODE = "dev_stub";
 
+    // Clean up previous runs
+    await db.delete(schema.paypalCaptures).where(eq(schema.paypalCaptures.workspaceId, wsId));
+    await db.delete(schema.paypalOrders).where(eq(schema.paypalOrders.workspaceId, wsId));
+    await db.delete(schema.mandates).where(eq(schema.mandates.workspaceId, wsId));
+    await db.delete(schema.evaluations).where(eq(schema.evaluations.workspaceId, wsId));
+    await db.delete(schema.proposals).where(eq(schema.proposals.workspaceId, wsId));
+
     // Seed workspace and active policy
     await db.insert(schema.workspaces).values({ id: wsId }).onConflictDoNothing();
-    await db.insert(schema.policies).values({ id: "pol_prd83", workspaceId: wsId }).onConflictDoNothing();
+    await db.delete(schema.policyVersions).where(eq(schema.policyVersions.workspaceId, wsId));
+    await db.delete(schema.policies).where(eq(schema.policies.workspaceId, wsId));
+    await db.insert(schema.policies).values({ id: "pol_prd83", workspaceId: wsId });
     await db.insert(schema.policyVersions).values({
       id: policyVersionId,
       policyId: "pol_prd83",
@@ -30,7 +39,7 @@ describe("PRD §8.3 Error Handling Matrix (All 7 Situations)", () => {
         cart_max_cents: 20000,
         per_item_max_cents: 15000,
         approval_threshold_cents: 5000,
-        daily_cap_cents: 50000,
+        daily_cap_cents: 500000,
         merchant_mode: "DENYLIST",
         merchants: [],
         blocked_categories: [],
@@ -38,7 +47,7 @@ describe("PRD §8.3 Error Handling Matrix (All 7 Situations)", () => {
         valid_from: new Date(Date.now() - 3600_000).toISOString(),
         expires_at: new Date(Date.now() + 365 * 24 * 3600_000).toISOString(),
       },
-    }).onConflictDoNothing();
+    });
   });
 
   // Helper to create a fresh proposal & mandate

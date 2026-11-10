@@ -44,7 +44,7 @@ describe("Payment Gateway Interface & Executor Service (PRD §8, §5.2)", () => 
         cart_max_cents: 15000,
         per_item_max_cents: 12000,
         approval_threshold_cents: 5000,
-        daily_cap_cents: 20000,
+        daily_cap_cents: 200000,
         merchant_mode: "DENYLIST",
         merchants: [],
         blocked_categories: [],

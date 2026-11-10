@@ -113,8 +113,17 @@ export function extractCanonicalPayload(
     };
   });
 
-  // PRD §6.4: items sorted by sku
-  materialItems.sort((a, b) => a.sku.localeCompare(b.sku));
+  // PRD §6.4: items sorted deterministically by sku (with deterministic tie-breakers)
+  materialItems.sort((a, b) => {
+    const skuCmp = a.sku.localeCompare(b.sku);
+    if (skuCmp !== 0) return skuCmp;
+    const domainCmp = a.merchant_domain.localeCompare(b.merchant_domain);
+    if (domainCmp !== 0) return domainCmp;
+    if (a.unit_price_cents !== b.unit_price_cents) {
+      return a.unit_price_cents - b.unit_price_cents;
+    }
+    return a.quantity - b.quantity;
+  });
 
   return {
     checkout_terms_version: termsVersion,
