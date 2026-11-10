@@ -748,6 +748,35 @@
 - Command Palette: Built with `@/ui/command` (cmdk) enabling instant keyboard navigation across all modules via `⌘K` or `Ctrl+K`.
 
 ### Next
+- Phase 27: Landing Page Redesign with Asymmetric Hero, Animated Attack Card & Bento Grid.
+
+---
+
+## Phase 27: Landing Page Redesign (Hero, Animated Attack Card & Bento Grid)
+- Status: Done
+- Branch: feat/ui-landing-page-redesign
+
+### Checklist
+- [x] Redesigned asymmetric hero in `src/app/page.tsx` with tight typography, tagline, primary "Enter demo workspace" button, and secondary "Watch how it blocks an attack" link
+- [x] Built interactive animated attack card (`src/ui/hero-attack-card.tsx`) using `motion/react` showing prompt injection proposal `#AGP-DEMO-A1` ($1,899) stamped `DENY: OVER_CART_CAP` with a live green `PayPal calls: 0` counter
+- [x] Built 4-room bento grid detailing the Four Rooms architecture (Propose, Authorize, Execute, Verify) with one-line functional explanations and technical badge pills
+- [x] Added honest disclosure section accurately explaining PayPal sandbox settlement stand-in, AP2-inspired architecture, test-only dev stub, and HMAC-signed session boundaries (without false auto-purging claims)
+- [x] Added system diagnostics telemetry grid displaying active payment mode, model engine, database engine, and mandate signing status
+- [x] Full support for `useReducedMotion` honoring user accessibility preferences
+- [x] Captured visual proof screenshot (`docs/screenshots/landing-redesign.png`)
+
+### Tested
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm test tests/integration/health-route.test.ts tests/integration/sidebar-links.test.ts` -> Passed (6 / 6 tests green)
+
+### Issues / Decisions
+- Client / Server Separation: Kept `src/app/page.tsx` as a fast Server Component reading server cookies and system environment diagnostics, delegating animation and motion effects cleanly to client component `src/ui/hero-attack-card.tsx`.
+- Reduced-Motion: Integrated `useReducedMotion()` from `motion/react` so that users with `prefers-reduced-motion` have animations disabled immediately with no motion delay/jitter.
+- Strict Honesty: Replaced any legacy unverified retention claims with factual disclosures: AP2-inspired (not AP2-compliant), sandbox settlement stand-in, and in-memory test dev stubs.
+
+### Next
 - Complete end-to-end user workflows and prepare hackathon submission materials.
+
 
 
