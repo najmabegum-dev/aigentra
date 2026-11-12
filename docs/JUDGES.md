@@ -2,40 +2,55 @@
 
 > **"The AI proposes. AIGENTRA authorizes. PayPal executes. The ledger proves."**
 
-Welcome judges! This document outlines the architecture, live PayPal Sandbox verification proofs, safety invariants, and exact verification steps for the AIGENTRA submission.
+Welcome judges! This document outlines the architecture, live PayPal Sandbox verification proofs, safety invariants, sponsor technology integrations, and exact verification steps for the AIGENTRA submission.
 
 ---
 
-## 🏆 Why AIGENTRA: The Best Use of PayPal + AI
+## 🏆 Why AIGENTRA: The Best Use of PayPal + AI & Agentic Commerce
 
 Most AI shopping and payment demos make a fatal design mistake: **they give the language model a tool that creates or captures orders directly**. Under prompt injection, jailbreaks, or hallucinations, the model can alter quantities, tamper with prices, or siphon funds.
 
 **AIGENTRA takes a radical architectural stand**:
-1. **Zero LLM Payment Tools**: No language model in AIGENTRA ever receives a tool or credential that can spend, capture, or modify PayPal orders.
+1. **Zero LLM Payment Tools**: No language model in AIGENTRA ever receives a tool or credential that can spend, capture, or modify PayPal orders (`src/rooms/propose` has zero imports from `src/rooms/execute`).
 2. **Deterministic Authority Gate**: Proposals must pass a pure policy function (`evaluate(...)`) before a cryptographically signed Mandate (`Ed25519 JWS`) is issued.
 3. **PayPal Orders v2 as the Sovereign Execution Engine**: Every financial movement is a PayPal Orders v2 Sandbox transaction, authorized strictly by a single-use Mandate and anchored with `custom_id = proposal_hash`.
 4. **Tamper-Evident Ledger**: Every state transition appends a SHA-256 hash-chained block to the immutable audit trail.
+5. **Reconcile-by-GET & Resilience**: Full implementation of all 7 failure scenarios in PRD §8.3 (timeouts, duplicate webhooks, out-of-order deliveries, instrument declines).
 
 ---
 
-## 📋 Live PayPal Sandbox Execution Proofs
+## 🏅 Sponsor Technology Jury Evaluation Guide
 
-### Verified Sandbox Captures
-Live capture flow completed and verified end-to-end on PayPal Sandbox:
-- **Order ID**: `3EW77512CL478240A`
-  - **Capture ID**: `8CC43315P4326833W`
-  - **Amount**: `$10.00 USD`
-  - **Status**: `COMPLETED`
-  - **Buyer**: Personal Sandbox Buyer Account
-  - **Merchant**: US Sandbox Business Merchant (`sb-76oqy53795010@business.example.com`)
-- **Order ID**: `86723729NA318782U`
-  - **Capture ID**: `7PK34147AL947684C`
-  - **Amount**: `$10.00 USD`
-  - **Status**: `COMPLETED`
+### 1. For PayPal Judges (Jo Franchetti, Eddie Jaoude, Marco Podien, Karthik Ravi, Himraj Singh, Nathaniel Olson)
+- **SDK**: Built with official `@paypal/paypal-server-sdk` (v2.5.0) in [`src/rooms/execute/paypalGateway.ts`](../src/rooms/execute/paypalGateway.ts).
+- **Orders v2 Sandbox**: Live order creation, authorization, and capture with anchored metadata (`custom_id = proposal_hash`, `invoice_id = AGX-<proposal_id>`).
+- **Webhook Signature Verification**: Raw body signature verification against `/v1/notifications/verify-webhook-signature` using transmission headers in [`src/rooms/verify/webhooks/paypalVerifier.ts`](../src/rooms/verify/webhooks/paypalVerifier.ts).
+- **Proof of Live Captures**:
+  - Order ID: `3EW77512CL478240A` → Capture ID: `8CC43315P4326833W` ($10.00 USD, COMPLETED)
+  - Order ID: `86723729NA318782U` → Capture ID: `7PK34147AL947684C` ($10.00 USD, COMPLETED)
+  - US Sandbox Business Merchant: `sb-76oqy53795010@business.example.com`
+
+### 2. For APIMatic Judges (Ameer Hassan)
+- **Detailed APIMatic Dossier**: See [`docs/APIMATIC.md`](./APIMATIC.md).
+- **API Modeling**: Used APIMatic to model and conform to the PayPal Orders v2 schema (`/v2/checkout/orders`) and Webhook Verification schema (`/v1/notifications/verify-webhook-signature`).
+- **Coding Guidance**: Leveraged APIMatic PayPal Context patterns to implement idempotent requests (`PayPal-Request-Id`) and error handling for `INSTRUMENT_DECLINED`.
+
+### 3. For AG Grid Judges (Sylwia Vargas)
+- **AG Studio Control Tower**: Built with `ag-studio-react` (v3.1.0) mounted on `/studio` (`src/studio/StudioControlTower.tsx`).
+- **Telemetry & Data Grid**: Ingests multi-source workspace data (`ledger`, `proposals`, `decisions`, `captures`) with cross-filtering, live budget telemetry, and decision distribution.
+- **Auditor Agent Integration**: Embeds conversational read-only auditor querying the ledger via natural language.
+
+### 4. For Channel3 Judges (Ignacio Valdez Bicard)
+- **Catalog Integration**: Implemented in [`src/rooms/propose/catalog/channel3.ts`](../src/rooms/propose/catalog/channel3.ts).
+- **Security & Integrity**: Sanitizes retailer titles, descriptions, and domains; normalizes float prices to integer cents; verifies server-side prices to prevent AI tampering.
+- **Fallback**: Graceful fallback to labelled seeded catalog when API key is unconfigured.
+
+### 5. For Render Judges (Shifra Williams)
+- **Infrastructure as Code**: See [`render.yaml`](../render.yaml) configuring standard Next.js App Router Web Service and Render PostgreSQL Database.
 
 ---
 
-## 🛡️ PRD §8.3 Failure Paths Matrix (100% Tested)
+## 📋 PRD §8.3 Failure Paths Matrix (100% Tested)
 
 All 7 error situations from PRD §8.3 are implemented and covered by automated tests in [`tests/unit/prd83-failure-paths.test.ts`](../tests/unit/prd83-failure-paths.test.ts):
 
@@ -53,7 +68,7 @@ All 7 error situations from PRD §8.3 are implemented and covered by automated t
 
 ## ⚡ Attack Lab Defense Proofs (Threat Scenarios A1–A7)
 
-In [`tests/unit/attack-lab.test.ts`](../tests/unit/attack-lab.test.ts), all 7 adversarial scenarios pass with **0 PayPal requests leaked**:
+In [`tests/unit/attack-lab.test.ts`](../tests/unit/attack-lab.test.ts) and on the live UI at `/attack-lab`, all 7 adversarial scenarios pass with **0 PayPal requests leaked**:
 - **A1 (Prompt Injection in Product Description)**: Denied with `OVER_CART_CAP` (0 PayPal calls).
 - **A2 (Inflated Total)**: Denied with `TOTAL_MISMATCH` (0 PayPal calls).
 - **A3 (Price Tampering)**: Denied with `ITEM_PRICE_MISMATCH` (0 PayPal calls).
@@ -69,7 +84,7 @@ In [`tests/unit/attack-lab.test.ts`](../tests/unit/attack-lab.test.ts), all 7 ad
 Run the following commands in the project directory:
 
 ```bash
-# 1. Full automated test suite (39 test files, 302 tests green)
+# 1. Fast automated unit test suite (Policy engine, hashing, mandates, state machine, money, attack lab)
 npm test
 
 # 2. Strict TypeScript type check (zero errors)
@@ -81,3 +96,8 @@ npm run lint
 # 4. Golden Intent verification (20/20 intents schema-verified)
 npm run verify:intents
 ```
+
+---
+
+## 🎥 3-Minute Presentation Video Script
+See [`docs/DEMO_SCRIPT.md`](./DEMO_SCRIPT.md) for the complete timestamped walkthrough and narration script.
