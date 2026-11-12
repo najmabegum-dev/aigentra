@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/checkout/capture-order
  * Captures an approved PayPal order, atomically consuming the single-use mandate.
- * PRD §8.2 step 5.
+ * PRD §8.2 step 5, §8.3 Row 2.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
@@ -50,6 +50,31 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       orderId,
     });
 
+    if (captureResult.status === "DECLINED") {
+      return NextResponse.json(
+        {
+          success: false,
+          status: "DECLINED",
+          capture_id: captureResult.captureId,
+          error:
+            "Payment declined: Your payment instrument was declined by PayPal (e.g. card declined or insufficient funds). Mandate consumed; a new approval is required.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (captureResult.status !== "COMPLETED") {
+      return NextResponse.json(
+        {
+          success: false,
+          status: captureResult.status,
+          capture_id: captureResult.captureId,
+          error: `Payment capture incomplete: PayPal returned status ${captureResult.status}.`,
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       capture_id: captureResult.captureId,
@@ -62,7 +87,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error: any) {
     console.error("Error capturing checkout order:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to capture checkout order" },
+      { success: false, error: "An unexpected internal server error occurred while capturing checkout order." },
       { status: 500 }
     );
   }

@@ -246,7 +246,7 @@
 ## Phase 11: Agent Workspace & Proposals
 - Status: Done
 - Branch: feat/agent-workspace-proposals
-- PR / Tag: #11 / phase-11
+- Tag: phase-11
 
 ### Checklist
 - [x] Server-side proposal builder recomputing prices and RFC 8785 hash (`src/rooms/propose/proposalService.ts`)
@@ -275,7 +275,7 @@
 ## Phase 12: Mandates and Approval Centre
 - Status: Done
 - Branch: feat/mandates-approval-centre
-- PR / Tag: #12 / phase-12
+- Tag: phase-12
 
 ### Checklist
 - [x] Ed25519 key loading & signing with `jose` (`src/rooms/authorize/mandates.ts`)
@@ -305,7 +305,7 @@
 ## Phase 13: Payment Gateway Interface, Dev Stub & Checkout Page
 - Status: Done
 - Branch: feat/payment-gateway-executor-checkout
-- PR / Tag: #13 / phase-13
+- Tag: phase-13
 
 ### Checklist
 - [x] Defined `PaymentGateway` interface in `src/rooms/execute/types.ts` accepting only `VerifiedMandate`
@@ -338,7 +338,7 @@
 ## Phase 14: Hash-Chained Ledger & Public Verify Page
 - Status: Done
 - Branch: feat/ledger-verify-chain
-- PR / Tag: #14 / phase-14
+- Tag: phase-14
 
 ### Checklist
 - [x] Implemented `appendEvent` with workspace chain head locking via `SELECT ... FOR UPDATE`, RFC 8785 canonical serialization, and SHA-256 hash chaining (`src/rooms/verify/ledger.ts`)
@@ -369,7 +369,7 @@
 ## Phase 15: Webhook Inbox with Verifier Interface
 - Status: Done
 - Branch: feat/webhooks-reconciliation
-- PR / Tag: #15 / phase-15
+- Tag: phase-15
 
 ### Checklist
 - [x] Defined `WebhookVerifier` interface and transmission headers types in `src/rooms/verify/webhooks/types.ts`
@@ -398,7 +398,7 @@
 ## Phase 16: Attack Lab & Adversarial Verification Suite
 - Status: Done
 - Branch: feat/attack-lab
-- PR / Tag: #16 / phase-16
+- Tag: phase-16
 
 ### Checklist
 - [x] Defined and implemented all 7 adversarial scenarios (A1 to A7) in `src/rooms/verify/attackLab/scenarios.ts` using real engine, mandate, webhook, and ledger modules
@@ -434,7 +434,7 @@
 ## Phase 17: AG Studio Base & Control Tower Telemetry
 - Status: Done
 - Branch: feat/ag-studio-base
-- PR / Tag: #17 / phase-17
+- Tag: phase-17
 
 ### Checklist
 - [x] Installed `ag-studio-react` (v3.1.0) and associated dependencies
@@ -466,7 +466,7 @@
 ## Phase 18: Custom Widgets & Control Tower Dashboard
 - Status: Done
 - Branch: feat/studio-custom-widgets
-- PR / Tag: #18 / phase-18
+- Tag: phase-18
 
 ### Checklist
 - [x] Built Authority Budget Ring widget (`src/studio/widgets/AuthorityBudgetRing.tsx`) tracking spent vs reserved vs remaining budget against daily cap
@@ -497,7 +497,7 @@
 ## Phase 19: Auditor Agent
 - Status: Done
 - Branch: feat/auditor-agent
-- PR / Tag: #19 / phase-19
+- Tag: phase-19
 
 ### Checklist
 - [x] Defined 3 strictly read-only auditor tools in `src/studio/auditor/tools.ts`: `query_ledger`, `explain_decision`, `summarize_blocked`
@@ -523,3 +523,336 @@
 
 ### Next
 - All requested phases P11 through P19 are complete! Ready for end-to-end review and demo testing.
+
+
+---
+
+## Phase 20: Fix PGlite Bundling in Next.js & HTTP Workspace Creation
+- Status: Done
+- Branch: fix/pglite-next-config
+
+### Checklist
+- [x] Configured `experimental.serverComponentsExternalPackages: ['@electric-sql/pglite']` in `next.config.mjs`
+- [x] Deleted `.next` build cache and restarted dev server
+- [x] Verified `POST /api/workspaces` returns HTTP 200 with signed session cookie and seeded policy
+- [x] Added automated route integration test `tests/integration/workspaces-route.test.ts`
+- [x] Added real HTTP script `scripts/create-workspace.mjs` and `"workspace:create"` npm script
+- [x] Added development fallback secret in `src/lib/session.ts` for non-production environments without `.env`
+
+### Tested
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run workspace:create` -> Passed (Real HTTP POST to http://localhost:3000/api/workspaces returned HTTP 200 OK)
+- `curl.exe -i -X POST http://localhost:3000/api/workspaces` -> Passed (`HTTP/1.1 200 OK`, signed session cookie set, `ok: true`)
+- `npm test tests/integration/workspaces-route.test.ts` -> Passed (1/1 test green)
+- Full test suite (`npm test`) -> Passed (33 test files, 269/269 tests green)
+
+### Issues / Decisions
+- Next.js Webpack bundler shims standard Node globals and breaks `@electric-sql/pglite` path resolution (`TypeError ERR_INVALID_ARG_TYPE: "path" must be a string, Buffer or URL, received an instance of URL`). Externalizing `@electric-sql/pglite` via `serverComponentsExternalPackages` ensures Node.js loads PGlite natively without bundling artifacts.
+- Provided fallback for non-production environments in `src/lib/session.ts` so developers can start and test fresh clones without manual `.env` file requirements.
+
+### Next
+- Phase 21: Polish, hardening, pre-capture mandate atomicity, and out-of-order webhook reconciliation.
+
+
+---
+
+## Phase 21: Polish, Hardening & Pre-Capture Mandate Atomicity
+- Status: Done
+- Branch: fix/pglite-next-config
+
+### Checklist
+- [x] Fixed sidebar links (/agent, /approvals, /studio, /attack-lab, /settings, /policies), implemented Settings diagnostics page (/settings), improved cookie whitespace and quote handling, and added automated route test (`tests/integration/sidebar-links.test.ts`)
+- [x] Upgraded default AI model from `gemini-1.5-flash` to current `gemini-2.0-flash`, adding active model health check in `/api/health`
+- [x] Updated terminology to "Tamper-Evident Ledger" across landing page and documentation
+- [x] Updated `/api/health` to execute live query against database client, correctly reporting `database: true` for both embedded PGlite and PostgreSQL
+- [x] Removed non-existent pull request references from `docs/PROGRESS.md`
+- [x] Enforced atomic pre-capture mandate consumption in `executeCaptureOrder` (PRD §8.2 step 5)
+- [x] Implemented `CAPTURE_FAILED` error handling, recording `PAYPAL_ORDER_CAPTURE_FAILED` in hash-chained ledger and requiring a fresh approval/mandate to retry
+- [x] Implemented out-of-order webhook reconciliation via `gateway.getOrder` (PRD §8.2 step 8, §8.3), verifying remote order status and recording `WEBHOOK_RECONCILED_OUT_OF_ORDER`
+- [x] Configured sequential vitest execution (`fileParallelism: false`) and 20s timeout in `vitest.config.ts` to prevent PGlite filesystem lock collisions on Windows
+
+### Tested
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npm test` -> Passed (35 / 35 test files passed, 283 / 283 tests green)
+
+### Issues / Decisions
+- Pre-capture mandate consumption: Mandate is burned atomically before sending the capture request to PayPal / gateway. If capture fails or is declined, the mandate cannot be replayed (`MANDATE_ALREADY_USED`) and the proposal enters `CAPTURE_FAILED`, requiring re-approval.
+- Out-of-order webhooks: Per PRD §8.3, if `PAYMENT.CAPTURE.COMPLETED` arrives while local state is `ORDER_CREATED`, `BUYER_APPROVED`, or `PENDING_CONFIRMATION`, the authority gate queries `gateway.getOrder(orderId)` to treat PayPal's response as authoritative, reconciling the database to `CONFIRMED` and appending `WEBHOOK_RECONCILED_OUT_OF_ORDER`.
+- Concurrency & PGlite locking: On Windows, parallel test workers accessing the same `.data` directory can cause PGlite init collisions. Adding `fileParallelism: false` ensures sequential test file execution and deterministic ledger hash chaining.
+
+### Next
+- Phase 22: PayPal Sandbox Spike (P20 throwaway).
+
+
+---
+
+## Phase 22: PayPal Sandbox Spike (P20 Throwaway)
+- Status: Done
+- Branch: fix/pglite-next-config
+
+### Checklist
+- [x] Installed `@paypal/paypal-server-sdk` (v2.5.0)
+- [x] Created throwaway CLI spike script `scripts/spike-paypal.mjs` and npm script `"spike:paypal"`
+- [x] Created throwaway API route `src/app/api/spike/route.ts` supporting order creation and server-side capture
+- [x] Created throwaway UI test page at `/spike` (`src/app/spike/page.tsx`) with sandbox buyer consent and capture flows
+- [x] Tested live order creation against PayPal Sandbox returning live order ID and approval link
+- [x] Verified zero secret logging and enforced isolation in `.eslintrc.json`
+
+### Tested
+- `node scripts/spike-paypal.mjs` -> Passed (Generated live Sandbox Order `03197678BP509731G`, status `PAYER_ACTION_REQUIRED`, approve URL returned)
+- `POST /api/spike` (`action: "create"`) -> Passed (Generated live Sandbox Order `1BV07891P1121570F`, status `PAYER_ACTION_REQUIRED`)
+- Live Sandbox Buyer Approval & Server-Side Capture -> **Passed (100% verified live on PayPal Sandbox)**:
+  - Order `3EW77512CL478240A` -> Captured server-side as `8CC43315P4326833W` (Status: `COMPLETED`, Amount: `USD 10.00`)
+  - Order `86723729NA318782U` -> Captured server-side as `7PK34147AL947684C` (Status: `COMPLETED`, Amount: `USD 10.00`)
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+
+### Issues / Decisions
+- Followed Golden Rule 10: Secrets never leave the server. Credentials are loaded from gitignored `.env.local`, never logged, committed, or rendered in UI.
+- All files, routes, and UI banners are explicitly marked `THROWAWAY SPIKE - NOT FOR PRODUCTION`.
+- Resolved `PAYEE_ACCOUNT_LOCKED_OR_CLOSED` by linking credentials to the pre-verified US Sandbox Business merchant account (`sb-76oqy53795010@business.example.com`).
+
+### Next
+- Phase 23: Complete integration of verified PayPal Sandbox gateway into production Authority Gate execution flow.
+
+
+---
+
+## Phase 23: PayPalGateway, Webhook Verification & PRD §8.3 Failure Paths
+- Status: Done
+- Branch: fix/pglite-next-config
+- Commits: `fc1dfbd`, `62b585b`
+
+### Checklist
+- [x] Implemented `PayPalGateway` in `src/rooms/execute/paypalGateway.ts` implementing `PaymentGateway` with `@paypal/paypal-server-sdk` (`fc1dfbd`)
+- [x] Anchored `custom_id = proposal_hash` and `invoice_id = AGX-<proposal_id>` in PayPal order payloads (PRD §8.2 step 2) (`fc1dfbd`)
+- [x] Implemented capture with reconcile-by-GET on timeout adopting `COMPLETED` order state per PRD §8.3 (`fc1dfbd`)
+- [x] Updated `getPaymentGateway()` in `src/rooms/execute/executor.ts` to select `PayPalGateway` when `PAYMENT_MODE=paypal` (`fc1dfbd`)
+- [x] Implemented `PayPalVerifier` in `src/rooms/verify/webhooks/paypalVerifier.ts` calling `/v1/notifications/verify-webhook-signature` with `PAYPAL_WEBHOOK_ID` using raw body and in-memory cached OAuth token (`fc1dfbd`)
+- [x] Implemented `verifyReturnOrder` in `src/rooms/execute/returnVerifier.ts` and return route `src/app/api/checkout/return/route.ts` validating order amount and `custom_id` against mandate (PRD §8.2 step 4 & §8.3) (`fc1dfbd`)
+- [x] Connected return verification to `src/app/(workspace)/checkout/page.tsx` buyer return flow (`fc1dfbd`)
+- [x] Removed throwaway `/spike` page and route (`src/app/spike/page.tsx`, `src/app/api/spike/route.ts`) and updated `.eslintrc.json` (`fc1dfbd`)
+- [x] **PRD §8.3 Row 1 (Buyer cancels)**: Implemented `cancelCheckoutProposal` (`src/rooms/execute/cancelHandler.ts`) and `POST /api/checkout/cancel`, transitioning state to `BUYER_CANCELLED`, releasing reservation, and appending `BUYER_CANCELLED` ledger event (`62b585b`)
+- [x] **PRD §8.3 Row 2 (Capture declined)**: Implemented readable error message for `INSTRUMENT_DECLINED` / `DECLINED` in `/api/checkout/capture-order` and `checkout/page.tsx`, marking state as `CAPTURE_FAILED` and appending `PAYPAL_ORDER_CAPTURE_FAILED` to ledger (`62b585b`)
+- [x] **PRD §8.3 Row 3 (Create-order timeout)**: In `executeCreateOrder`, recover by stored `requestId` (`create-<mandate.jti>`) without duplicate record creation in `paypal_orders` (`62b585b`)
+- [x] **PRD §8.3 Row 4 (Capture timeout)**: In `PayPalGateway.captureOrder`, catch timeout and query `getOrder(orderId)`, adopting `COMPLETED` order result (`fc1dfbd`, `62b585b`)
+- [x] **PRD §8.3 Row 5 (Duplicate webhook)**: Primary-key conflict on `paypal_event_id` in `processor.ts` returns HTTP 200 with `{ duplicate: true }`, changing nothing (`62b585b`)
+- [x] **PRD §8.3 Row 6 (Webhook before capture response)**: Out-of-order `PAYMENT.CAPTURE.COMPLETED` reconciles via `gateway.getOrder` to confirm remote truth and transition to `CONFIRMED` (`62b585b`)
+- [x] **PRD §8.3 Row 7 (Amount or custom_id mismatch)**: In `returnVerifier.ts` and `processor.ts`, any difference triggers `DRIFT_FLAGGED`, emits a security ledger event, and renders a red alert (`62b585b`)
+- [x] Added unit tests: `tests/unit/paypal-gateway.test.ts`, `tests/unit/paypal-verifier.test.ts`, `tests/unit/checkout-return.test.ts`, `tests/unit/prd83-failure-paths.test.ts` (19/19 tests green)
+
+### Tested
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npm test` -> Passed (39 / 39 test files passed, 302 / 302 tests green)
+
+### Issues / Decisions
+- Strict Mandate Anchor: PayPal order creation anchors `custom_id = proposal_hash` and `invoice_id = AGX-<proposalId>`. Return handler loads the order from PayPal via `getOrder` and validates that `amountCents` and `custom_id` match the cryptographic mandate before capture proceeds, flagging `DRIFT_FLAGGED` on mismatch.
+- Reconcile-by-GET: In accordance with PRD §8.3, if `captureOrder` times out or throws an error, `PayPalGateway` queries `ordersController.getOrder(orderId)`. If the remote order status is already `COMPLETED`, it adopts the result rather than leaving the system in an unconfirmed state.
+- Webhook Verification: `PayPalVerifier` queries `/v1/notifications/verify-webhook-signature` using the raw payload body and required transmission headers, rejecting any non-`SUCCESS` response with an error.
+- All 7 error paths from PRD §8.3 implemented and verified with automated unit tests using mocked PayPal responses. User interface renders distinct human-readable alerts for buyer cancellation, declined instruments, and financial drift.
+
+### Next
+- Phase 24: Production Hardening, Spend Tracking & Rate Limiting (F1-F8).
+
+
+---
+
+## Phase 24: Production Hardening, Spend Tracking & Rate Limiting
+- Status: Done
+- Branch: fix/pglite-next-config
+
+### Checklist
+- [x] F1: Implemented shared `getSpendState(workspaceId, policyTimezone, now, excludeProposalId)` reading real `killSwitch` from `workspaces`, calculating calendar-day `daily_captured_cents` and active `daily_reserved_cents` (excluding current proposal). Wired into proposals evaluation and checkout execution (`executeCreateOrder`, `executeCaptureOrder`). Added tests in `tests/unit/spend-state.test.ts`. (`32d604b`)
+- [x] F2: In `executeCaptureOrder`, enforced pre-validation before consuming the single-use mandate: loads bound `paypal_orders` record (throws `ORDER_NOT_BOUND` if unbound or assigned to different proposal), calls `verifyReturnOrder` with `gateway.getOrder` requiring `APPROVED`/`COMPLETED`, matching amount and `custom_id` (throws on drift/tamper), and re-evaluates policy with live spend state before consuming mandate. Added tests in `tests/unit/capture-prevalidation.test.ts`. (`e11058f`)
+- [x] F3: In `mandates.ts`, read env variables `MANDATE_SIGNING_PRIVATE_KEY` and `MANDATE_SIGNING_PUBLIC_KEY` with `\n` normalization. Made production strictly fail to start if keys are missing or invalid (no silent ephemeral keys in production). Added `npm run keys:generate` script outputting single-line formatted Ed25519 key pairs. Added tests in `tests/unit/mandates-production.test.ts`. (`1da574b`)
+- [x] F4: In `getPaymentGateway()`, when `PAYMENT_MODE` is `paypal` (or `paypal_sandbox`), strictly throw in production (`NODE_ENV === "production"`) if `PayPalGateway` cannot initialize; never fall back to `DevStubGateway` in production. Added tests in `tests/unit/paypal-gateway.test.ts`. (`c748708`)
+- [x] F5: Reworded landing page disclosure (`src/app/page.tsx`) to remove "auto-purged after 14 days", stating honest cryptographic session isolation and workspace-scoped data boundaries. (`be64f97`)
+- [x] F6: Added `src/middleware.ts` with in-memory sliding window rate limiter (60 req/min for general `/api`, 10 req/min for `POST /api/workspaces`, completely bypassing `/api/webhooks/paypal`), and security headers (CSP allowing Next.js, AG Studio, and PayPal frames, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Frame-Options: DENY`). Added tests in `tests/unit/middleware.test.ts`. (`b396a1b`)
+- [x] F7: Sanitized API 500 error responses across all API endpoints to return generic user-facing error messages without leaking technical error messages, internal paths, or stack traces, while logging full error details with console.error on the server side only. (`173b524`)
+- [x] F8: Pinned current Gemini default model `gemini-2.0-flash` with Google Generative AI SDK, documented environment setup and key generation commands in `README.md`.
+
+### Tested
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run verify:intents` -> Passed (20/20 golden intents verified)
+- `npx vitest run tests/integration/health-route.test.ts` -> Passed (3 / 3 tests green)
+- `npx vitest run tests/unit/intent-parser.test.ts` -> Passed (8 / 8 tests green)
+
+### Issues / Decisions
+- Spend State: Real spend tracking aggregates captured proposals within the current calendar day calculated in the policy's configured timezone (`policyTimezone`), and active reservations (`MANDATED`, `ORDER_CREATED`, `BUYER_APPROVED`). Passing `excludeProposalId` prevents double-counting the proposal currently undergoing checkout execution against the daily cap.
+- Order Pre-Validation Sequence (F2): Validating the bound order in `paypal_orders` and verifying return status, amounts, and `custom_id` via `gateway.getOrder` BEFORE consuming the mandate prevents burning single-use cryptographic tokens when external errors or drift occur.
+- Production Mandate Keys (F3): Strict fail-fast behavior in production if `MANDATE_SIGNING_PRIVATE_KEY` or `MANDATE_SIGNING_PUBLIC_KEY` is missing or invalid. Ephemeral keys are allowed only when `NODE_ENV !== "production"`. `npm run keys:generate` produces Ed25519 key pairs formatted with escaped `\n` for copy-paste deployment.
+- Payment Gateway Production Invariant (F4): `getPaymentGateway` strictly rejects initialization failures with an exception when `NODE_ENV === "production"` and `PAYMENT_MODE === "paypal"`, prohibiting silent fallback to `DevStubGateway`.
+- Retention Claim Accuracy (F5): Replaced unverified 14-day auto-purge claim on the landing page with accurate disclosure of HMAC-signed session cookies and mandatory workspace-scoped boundaries.
+- Rate Limiting and Edge Security (F6): Implemented in-memory rate limiting with sliding windows and automatic stale bucket cleanup. Crucially, `/api/webhooks/paypal` is exempted to guarantee unhindered settlement capture from PayPal servers. Security headers protect against MIME-sniffing, clickjacking, and unauthorized origin leakage while permitting AG Studio dynamic workers and PayPal SDK frames.
+- Information Leak Prevention (F7): Replaced all occurrences of `error.message` in HTTP 500 responses with sanitized, generic plain-language error descriptions. Server-side details and diagnostics remain strictly isolated in backend logs.
+- Gemini Model Pinning (F8): Verified `gemini-2.0-flash` as current production flagship model via official Google documentation, documented fallback and key requirements in `README.md`.
+- Canonical sorting tie-breaker: Strengthened item canonicalization with tie-breaking comparators on merchant domain, price, and quantity to ensure invariant hashing even when duplicate SKUs are present in a cart.
+
+### Next
+- Phase 25: Dark-First Design Tokens, Shadcn UI Components & Slim Status Bar.
+
+---
+
+## Phase 25: Dark-First Design Tokens, Shadcn UI Components & Slim Status Bar
+- Status: Done
+- Branch: feat/ui-design-tokens-shadcn
+
+### Checklist
+- [x] Installed `geist`, `motion`, `sonner`, `@radix-ui/react-*`, and `cmdk`
+- [x] Implemented shadcn/ui components in `src/ui/`: `button`, `card`, `badge`, `input`, `label`, `tabs`, `tooltip`, `dialog`, `sheet`, `skeleton`, `command`, `separator`, `switch`
+- [x] Loaded Geist Sans and Geist Mono with `next/font` in `layout.tsx` and wired them to Tailwind font families
+- [x] Implemented dark-first design tokens in `globals.css` with deep navy surfaces, single blue accent, semantic allow/approval/deny/info status colors, soft shadows, radius scale, and tabular numbers utility, while maintaining full light theme compatibility
+- [x] Replaced two full-width banners with one slim 32px status bar featuring `SANDBOX` pill and conditional `DEV STUB` pill (`src/ui/banners.tsx`)
+- [x] Added Sonner Toaster in `layout.tsx` and created `src/ui/sonner.tsx` wrapper
+- [x] Captured before and after screenshots of landing page (`docs/screenshots/before-landing.png`, `docs/screenshots/after-landing.png`)
+
+### Tested
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm test` -> Passed (43 / 43 test files passed, 320 / 320 tests green)
+
+### Issues / Decisions
+- Dark-First Foundation: Configured `:root` and `.dark` with deep navy surfaces (`#060B14`, `#0B1324`, `#101B33`) and one clear blue accent (`#3B82F6`), while keeping `.light` fully functional with clean contrast.
+- Slim Status Bar: Replaced 80px dual full-width banners with a single 32px (`h-8`) status bar containing a glowing `SANDBOX` pill, optional `DEV STUB` pill when `paymentMode="dev_stub"`, and security gateway status badge.
+- Typography: Geist Sans and Geist Mono loaded via `geist/font/sans` and `geist/font/mono` using Next.js local font loader, mapped to `font-sans` and `font-mono`.
+- Primitives: Added 13 accessible shadcn/ui React 18 primitives in `src/ui/` with full TypeScript strict typing and zero changes to existing business logic or API contracts.
+
+### Next
+- Phase 26: Rebuild App Shell, Collapsible Left Rail, Header & Command Palette.
+
+---
+
+## Phase 26: Rebuild App Shell, Collapsible Left Rail, Header & Command Palette
+- Status: Done
+- Branch: feat/ui-app-shell-navigation
+
+### Checklist
+- [x] Implemented global Command Palette (`src/ui/command-palette.tsx`) with Ctrl/Cmd+K shortcuts, search across all 6 workspace modules, workspace ID copy, and theme toggle actions
+- [x] Rebuilt Header (`src/ui/header.tsx`) with brand wordmark, command palette trigger button (`⌘K`), active status pill (`GUARD ACTIVE`), workspace chip with copy button and Sonner toast feedback, and theme toggle
+- [x] Rebuilt Sidebar (`src/ui/sidebar.tsx`) as a slim collapsible left rail (expanded 224px / collapsed 64px) with left-edge active state indicator, tooltips on collapsed rail, and persistent authority rail summary
+- [x] Implemented mobile-responsive navigation under 768px (`< md`): fixed bottom navigation bar with micro-labels and full drawer `Sheet` accessible via hamburger trigger
+- [x] Updated AppShell (`src/ui/app-shell.tsx`) orchestrating slim 32px banner, header, collapsible left rail, mobile drawer sheet, and command palette
+- [x] Preserved all route URLs and exported `NAVIGATION_ITEMS` (`/policies`, `/agent`, `/approvals`, `/studio`, `/attack-lab`, `/settings`)
+
+### Tested
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm test tests/integration/sidebar-links.test.ts` -> Passed (3 / 3 tests green, all 6 routes resolved with HTTP 200)
+
+### Issues / Decisions
+- Dual-Mode Mobile Navigation: On viewports `< md`, the rail seamlessly transforms into a 56px fixed bottom thumb-navigation bar while maintaining a slide-over `Sheet` for comprehensive module descriptions.
+- Collapsible Left Rail: Collapses down to 64px icon-only rail with Radix Tooltip hover descriptions and indicator dots, giving maximum screen real estate to workspace tools.
+- Command Palette: Built with `@/ui/command` (cmdk) enabling instant keyboard navigation across all modules via `⌘K` or `Ctrl+K`.
+
+### Next
+- Phase 27: Landing Page Redesign with Asymmetric Hero, Animated Attack Card & Bento Grid.
+
+---
+
+## Phase 27: Landing Page Redesign (Hero, Animated Attack Card & Bento Grid)
+- Status: Done
+- Branch: feat/ui-landing-page-redesign
+
+### Checklist
+- [x] Redesigned asymmetric hero in `src/app/page.tsx` with tight typography, tagline, primary "Enter demo workspace" button, and secondary "Watch how it blocks an attack" link
+- [x] Built interactive animated attack card (`src/ui/hero-attack-card.tsx`) using `motion/react` showing prompt injection proposal `#AGP-DEMO-A1` ($1,899) stamped `DENY: OVER_CART_CAP` with a live green `PayPal calls: 0` counter
+- [x] Built 4-room bento grid detailing the Four Rooms architecture (Propose, Authorize, Execute, Verify) with one-line functional explanations and technical badge pills
+- [x] Added honest disclosure section accurately explaining PayPal sandbox settlement stand-in, AP2-inspired architecture, test-only dev stub, and HMAC-signed session boundaries (without false auto-purging claims)
+- [x] Added system diagnostics telemetry grid displaying active payment mode, model engine, database engine, and mandate signing status
+- [x] Full support for `useReducedMotion` honoring user accessibility preferences
+- [x] Captured visual proof screenshot (`docs/screenshots/landing-redesign.png`)
+
+### Tested
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm test tests/integration/health-route.test.ts tests/integration/sidebar-links.test.ts` -> Passed (6 / 6 tests green)
+
+### Issues / Decisions
+- Client / Server Separation: Kept `src/app/page.tsx` as a fast Server Component reading server cookies and system environment diagnostics, delegating animation and motion effects cleanly to client component `src/ui/hero-attack-card.tsx`.
+- Reduced-Motion: Integrated `useReducedMotion()` from `motion/react` so that users with `prefers-reduced-motion` have animations disabled immediately with no motion delay/jitter.
+- Strict Honesty: Replaced any legacy unverified retention claims with factual disclosures: AP2-inspired (not AP2-compliant), sandbox settlement stand-in, and in-memory test dev stubs.
+
+### Next
+- Phase 28: Redesign DecisionCard and AuthorityRail UI components.
+
+---
+
+## Phase 28: Redesign DecisionCard and AuthorityRail UI Components
+- Status: Done
+- Branch: feat/ui-decision-card-authority-rail
+
+### Checklist
+- [x] Wrote automated unit tests for DecisionCard and AuthorityRail (`tests/unit/decision-card-authority-rail.test.ts`) (943b6d3)
+- [x] Redesigned `DecisionCard` (`src/ui/agent-workspace/DecisionCard.tsx`):
+  - Very large verdict header with distinct semantic colors (`ALLOW` in emerald, `REQUIRE_APPROVAL` in amber, `DENY` in rose)
+  - Amount formatted in large tabular numerals (`font-mono text-3xl sm:text-4xl font-black tabular-nums`) with clear "Verified Server-Side" badge
+  - Monospace reason-code chips with contextual color differentiation
+  - Rules checklist animated with `motion/react` staggered reveals and `useReducedMotion` support
+  - RFC 8785 SHA-256 canonical hash chip with one-click copy and Sonner toast notification
+- [x] Redesigned `AuthorityRail` (`src/ui/checkout/AuthorityRail.tsx`):
+  - Five connected nodes representing the complete financial lifecycle: Policy decision, AIGENTRA approval, PayPal buyer consent, Capture, Webhook confirmed and ledger sealed
+  - Responsive continuous connecting track that dynamically fills with a gradient bar as states complete
+  - Prominent jurisdiction badges labelling AIGENTRA vs PayPal for clear two-tier separation
+  - Formatted timestamps for executed steps and clear active / pending / failed states
+  - Pulsing animated active step indicator with radar ping ring
+- [x] Maintained exact props interface and 100% backwards compatibility with zero changes to business logic or API contracts
+
+### Tested
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm test tests/unit/decision-card-authority-rail.test.ts` -> Passed (5 / 5 tests green)
+- `npm test tests/integration/proposals-api.test.ts tests/integration/sidebar-links.test.ts` -> Passed (7 / 7 tests green)
+
+### Issues / Decisions
+- Component Isolation: Redesigns preserved exact prop types (`DecisionCardProps`, `AuthorityRailProps`), allowing immediate drop-in replacement across `/agent` and `/checkout` routes without breaking existing data flows.
+- Visual Distinction: Clearly segregated AIGENTRA (Autonomous Gate) jurisdiction from PayPal (Financial Execution) with dedicated badge chips, aligning with PRD §10.3 and Golden Rule 1.
+- Accessibility & Motion: Applied `useReducedMotion()` from `motion/react` so that stagger animations and pulsing indicators gracefully adapt to user accessibility preferences.
+
+### Next
+- Phase 29: Redesign Attack Lab as Red-Team Console and restyle ApprovalCentre.
+
+---
+
+## Phase 29: Redesign Attack Lab Console & ApprovalCentre
+- Status: Done
+- Branch: feat/ui-attack-lab-approval-centre
+
+### Checklist
+- [x] Wrote automated unit tests for AttackLabPage and ApprovalCentre (`tests/unit/attack-lab-approvals-ui.test.ts`) (d4a67f0)
+- [x] Restyled Attack Lab page (`src/app/(workspace)/attack-lab/page.tsx`) as a red-team command console:
+  - Deep dark console theme (`#060B14`, red-team terminal badge `RED-TEAM OPS CONSOLE`)
+  - Prominent "Run All Attacks (A1–A7)" button with live progress bar and suite percentage counter
+  - Scenario rows streaming in one-by-one with `motion/react` staggered animations and `useReducedMotion` support
+  - Pass/Fail glyphs: `[✓ DEFENDED]` and `[✗ BREACHED]`
+  - Monospace expected vs actual differential output (`EXP:` vs `ACT:`)
+  - Glowing green `PayPal calls: 0` proof chip on every threat scenario
+  - Refined adversarial execution evidence table persisted from `attack_runs`
+- [x] Restyled `ApprovalCentre` (`src/ui/approvals/ApprovalCentre.tsx`):
+  - Clearer two-column side-by-side comparison: Proposed Cart Specification vs Active Policy Guardrails
+  - Visual delta comparisons on approval threshold, cart ceilings, per-item limits, and daily spend cap
+  - SVG circular countdown expiry ring calculating remaining mandate duration with glowing indicator
+  - Big, bold action buttons: large gradient green `Approve & Issue Mandate` and large `Reject Proposal`
+  - Integrated shadcn/ui `Skeleton` loaders for smooth loading states on queue and details panels
+  - Kept all API routes, handlers, and data flows unchanged (no logic modifications)
+
+### Tested
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npm test tests/unit/attack-lab-approvals-ui.test.ts` -> Passed (2 / 2 tests green)
+- `npm test tests/unit/attack-lab.test.ts tests/integration/sidebar-links.test.ts` -> Passed (11 / 11 tests green)
+
+### Issues / Decisions
+- Zero Logic Alterations: Strictly preserved all API endpoints (`/api/attack-lab/run`, `/api/attack-lab/runs`, `/api/approvals`, `/api/proposals/[id]/approve`, `/reject`, `/supersede`), state transitions, and server-side recalculation behaviors.
+- Red-Team Console Theme: Emphasized the adversarial testing narrative with tactical monospace telemetry, pass/fail terminal glyphs, and unforgeable "PayPal calls: 0" proof chips.
+- Expiry Ring: Implemented animated SVG circular progress ring visualizing the 15-minute mandate window with color degradation to red on expiration.
+
+### Next
+- Complete end-to-end user workflows and prepare hackathon submission materials.
+
+
+
+
+

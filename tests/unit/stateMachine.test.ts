@@ -72,8 +72,28 @@ describe("Proposal State Machine (PRD §6.6)", () => {
       expect(transition("CAPTURED", "WEBHOOK_VERIFY")).toBe("CONFIRMED");
     });
 
+    it("transitions ORDER_CREATED -> CONFIRMED on WEBHOOK_VERIFY (out-of-order webhook reconcile)", () => {
+      expect(transition("ORDER_CREATED", "WEBHOOK_VERIFY")).toBe("CONFIRMED");
+    });
+
+    it("transitions BUYER_APPROVED -> CONFIRMED on WEBHOOK_VERIFY (out-of-order webhook reconcile)", () => {
+      expect(transition("BUYER_APPROVED", "WEBHOOK_VERIFY")).toBe("CONFIRMED");
+    });
+
+    it("transitions PENDING_CONFIRMATION -> CONFIRMED on WEBHOOK_VERIFY (out-of-order webhook reconcile)", () => {
+      expect(transition("PENDING_CONFIRMATION", "WEBHOOK_VERIFY")).toBe("CONFIRMED");
+    });
+
     it("transitions CAPTURED -> DRIFT_FLAGGED on FLAG_DRIFT", () => {
       expect(transition("CAPTURED", "FLAG_DRIFT")).toBe("DRIFT_FLAGGED");
+    });
+
+    it("transitions CAPTURE_FAILED -> APPROVED on HUMAN_APPROVE (requiring new approval)", () => {
+      expect(transition("CAPTURE_FAILED", "HUMAN_APPROVE")).toBe("APPROVED");
+    });
+
+    it("transitions CAPTURE_FAILED -> EVALUATED on EVALUATE", () => {
+      expect(transition("CAPTURE_FAILED", "EVALUATE")).toBe("EVALUATED");
     });
   });
 
@@ -131,6 +151,12 @@ describe("Proposal State Machine (PRD §6.6)", () => {
 
     it("rejects capturing directly from MANDATED without BUYER_APPROVED", () => {
       expect(() => transition("MANDATED", "CAPTURE_SUCCESS")).toThrow(
+        IllegalStateTransitionError
+      );
+    });
+
+    it("rejects capturing directly from CAPTURE_FAILED without re-approval", () => {
+      expect(() => transition("CAPTURE_FAILED", "CAPTURE_SUCCESS")).toThrow(
         IllegalStateTransitionError
       );
     });

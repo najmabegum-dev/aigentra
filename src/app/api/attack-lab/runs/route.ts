@@ -35,10 +35,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       runs,
     });
   } catch (error: any) {
+    console.error("Error fetching attack runs:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to fetch attack runs",
+        error: "An unexpected internal server error occurred while fetching attack runs.",
       },
       { status: 500 }
     );

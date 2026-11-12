@@ -8,7 +8,7 @@ import path from "node:path";
 
 describe("Intent Parser & AI Module (PRD §9.1 - §9.3)", () => {
   it("verifies the chosen Gemini model ID", () => {
-    expect(DEFAULT_GEMINI_MODEL).toBe("gemini-1.5-flash");
+    expect(DEFAULT_GEMINI_MODEL).toBe("gemini-2.0-flash");
   });
 
   it("verifies all 20 golden set test intents against Zod schema and safety rules", () => {

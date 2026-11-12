@@ -22,7 +22,13 @@
   },
   "overrides": [
     {
-      "files": ["src/rooms/execute/**", "src/app/api/checkout/**", "src/app/api/dev-stub/**", "tests/**"],
+      "files": [
+        "src/rooms/execute/**",
+        "src/app/api/checkout/**",
+        "src/app/api/dev-stub/**",
+        "scripts/**",
+        "tests/**"
+      ],
       "rules": {
         "no-restricted-imports": "off"
       }

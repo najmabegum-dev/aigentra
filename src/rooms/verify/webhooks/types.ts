@@ -20,6 +20,17 @@ export interface WebhookVerifier {
   ): Promise<WebhookVerificationResult>;
 }
 
+export interface WebhookGateway {
+  getOrder(id: string): Promise<{
+    orderId: string;
+    status: string;
+    customId?: string;
+    amountCents: number;
+    currency?: string;
+    [key: string]: any;
+  }>;
+}
+
 export interface WebhookProcessResult {
   status: number;
   verified?: boolean;

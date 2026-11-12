@@ -36,17 +36,17 @@ export function EnterWorkspaceButton() {
       type="button"
       onClick={handleEnterWorkspace}
       disabled={loading}
-      className="inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-input bg-primary hover:bg-blue-600 active:bg-blue-700 text-white font-semibold text-sm transition-colors duration-standard shadow-sm disabled:opacity-70 disabled:cursor-not-allowed group focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-[4px] bg-signal hover:opacity-90 active:opacity-100 text-[#0B0C0E] font-mono font-bold text-xs transition-opacity duration-150 disabled:opacity-40 disabled:cursor-not-allowed group focus:outline-none focus:ring-1 focus:ring-signal cursor-pointer"
     >
       {loading ? (
         <>
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <Loader2 className="w-4 h-4 animate-spin text-[#0B0C0E]" strokeWidth={1.25} />
           <span>Provisioning Secure Workspace...</span>
         </>
       ) : (
         <>
           <span>Enter demo workspace</span>
-          <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform text-[#0B0C0E]" strokeWidth={1.25} />
         </>
       )}
     </button>

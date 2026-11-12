@@ -76,7 +76,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   } catch (error: any) {
     console.error("Error creating checkout order:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to create checkout order" },
+      { success: false, error: "An unexpected internal server error occurred while creating checkout order." },
       { status: 500 }
     );
   }

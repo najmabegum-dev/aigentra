@@ -62,10 +62,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       results,
     });
   } catch (error: any) {
+    console.error("Error executing attack lab scenario:", error);
     return NextResponse.json(
       {
         success: false,
-        error: error.message || "Failed to execute attack lab scenario",
+        error: "An unexpected internal server error occurred while executing attack lab scenario.",
       },
       { status: 500 }
     );
