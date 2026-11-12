@@ -850,6 +850,32 @@
 - Expiry Ring: Implemented animated SVG circular progress ring visualizing the 15-minute mandate window with color degradation to red on expiration.
 
 ### Next
+- Phase 30: Mandate signing environment variable names & production fail-fast enforcement.
+
+---
+
+## Phase 30: Mandate Signing Environment Variable Names & Production Fail-Fast Enforcement
+- Status: Done
+- Branch: feat/mandates-env-keys
+- PR / Tag: #30 / phase-30
+
+### Checklist
+- [x] Configured `mandates.ts` to read `MANDATE_SIGNING_PRIVATE_KEY` and `MANDATE_SIGNING_PUBLIC_KEY` as documented in `.env.example`
+- [x] Accepted PEM text with escaped `\n` line breaks and normalized to real newlines prior to key import
+- [x] Strictly throw clear error in production if either key is missing or invalid with zero fallback and no secret leakage
+- [x] Preserved ephemeral Ed25519 fallback for non-production environments
+- [x] Added unit tests in `tests/unit/mandates-production.test.ts` covering missing individual keys, corrupted keys, secret redaction, and non-production fallbacks
+
+### Tested
+- `npm run typecheck` -> Passed (0 errors)
+- `npm run lint` -> Passed (✔ No ESLint warnings or errors)
+- `npx vitest run tests/unit/mandates-production.test.ts tests/unit/mandates.test.ts` -> Passed (17 / 17 tests green)
+
+### Issues / Decisions
+- Golden Rule 10 Compliance: Ensured error messages never print, log, or interpolate raw key values or fragments when key import fails in production.
+- Production Fail-Fast: Removed legacy fallback variable names (`MANDATE_SIGNING_KEY_PEM`, `MANDATE_PUBLIC_KEY_PEM`) in favor of canonical `.env.example` variables, requiring both keys to be present and valid in production.
+
+### Next
 - Complete end-to-end user workflows and prepare hackathon submission materials.
 
 

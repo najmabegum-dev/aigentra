@@ -38,7 +38,7 @@ export function _resetCachedKeyPairForTesting(): void {
  * Normalizes PEM string handling escaped newlines (\n) from single-line env definitions.
  */
 function normalizePem(pem: string): string {
-  return pem.replace(/\\n/g, "\n").trim();
+  return pem.replace(/\\r\\n|\\n/g, "\n").trim();
 }
 
 /**
@@ -59,9 +59,9 @@ async function getKeyPair(): Promise<{
 
   const isProduction = process.env.NODE_ENV === "production";
   const rawPrivate =
-    process.env.MANDATE_SIGNING_PRIVATE_KEY || process.env.MANDATE_SIGNING_KEY_PEM;
+    process.env.MANDATE_SIGNING_PRIVATE_KEY;
   const rawPublic =
-    process.env.MANDATE_SIGNING_PUBLIC_KEY || process.env.MANDATE_PUBLIC_KEY_PEM;
+    process.env.MANDATE_SIGNING_PUBLIC_KEY;
 
   if (rawPrivate && rawPublic && rawPrivate.trim().length > 0 && rawPublic.trim().length > 0) {
     try {
