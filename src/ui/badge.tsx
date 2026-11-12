@@ -3,25 +3,31 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+  "inline-flex items-center text-[11px] font-mono font-medium transition-colors border",
   {
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
+          "rounded-[4px] border-line bg-surface-2 text-text",
         secondary:
-          "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
+          "rounded-[4px] border-line bg-surface-2 text-text-dim",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
-        outline: "text-foreground border-border",
+          "rounded-[4px] border-deny/40 bg-deny/10 text-deny",
+        outline:
+          "rounded-[4px] border-line bg-transparent text-text",
+        // Real status badges — only these are allowed as pills
         allow:
-          "border-emerald-600/40 bg-emerald-950/60 text-emerald-300",
+          "rounded-full border-[var(--color-allow)]/30 bg-[var(--color-allow)]/10 text-[var(--color-allow)] px-2.5 py-0.5 font-bold",
         approval:
-          "border-amber-600/40 bg-amber-950/60 text-amber-300",
+          "rounded-full border-[var(--color-approval)]/30 bg-[var(--color-approval)]/10 text-[var(--color-approval)] px-2.5 py-0.5 font-bold",
         deny:
-          "border-rose-600/40 bg-rose-950/60 text-rose-300",
+          "rounded-full border-[var(--color-deny)]/30 bg-[var(--color-deny)]/10 text-[var(--color-deny)] px-2.5 py-0.5 font-bold",
+        signal:
+          "rounded-full border-signal/30 bg-signal/10 text-signal px-2.5 py-0.5 font-bold",
         info:
-          "border-blue-600/40 bg-blue-950/60 text-blue-300",
+          "rounded-[4px] border-line bg-surface-2 text-text px-2 py-0.5",
+        sandbox:
+          "rounded-full border-approval/30 bg-approval/10 text-approval px-2.5 py-0.5 font-bold",
       },
     },
     defaultVariants: {

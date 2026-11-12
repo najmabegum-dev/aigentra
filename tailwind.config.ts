@@ -25,11 +25,26 @@ const config: Config = {
         ring: "var(--ring)",
         background: "var(--background)",
         foreground: "var(--foreground)",
+        // Ink & Signal Design Tokens
+        bg: "var(--color-bg)",
         surface: {
-          DEFAULT: "var(--surface)",
-          raised: "var(--surface-raised)",
-          overlay: "var(--surface-overlay)",
+          DEFAULT: "var(--color-surface)",
+          2: "var(--color-surface-2)",
+          raised: "var(--color-surface-2)",
+          overlay: "var(--color-surface-2)",
         },
+        line: {
+          DEFAULT: "var(--color-line)",
+          strong: "var(--color-line-strong)",
+        },
+        text: {
+          DEFAULT: "var(--color-text)",
+          dim: "var(--color-text-dim)",
+        },
+        signal: "var(--color-signal)",
+        allow: "var(--color-allow)",
+        approval: "var(--color-approval)",
+        deny: "var(--color-deny)",
         ink: "var(--ink)",
         primary: {
           DEFAULT: "var(--primary)",
@@ -68,49 +83,43 @@ const config: Config = {
         },
       },
       borderRadius: {
-        lg: "var(--radius-lg, 10px)",
-        md: "var(--radius, 8px)",
-        sm: "var(--radius-sm, 6px)",
-        xl: "var(--radius-xl, 14px)",
-        card: "10px",
-        input: "8px",
+        DEFAULT: "var(--radius, 6px)",
+        sm: "var(--radius-sm, 4px)",
+        md: "var(--radius-md, 6px)",
+        lg: "var(--radius-lg, 6px)",
+        xl: "var(--radius-xl, 8px)",
+        card: "6px",
+        input: "4px",
       },
       fontFamily: {
+        display: [
+          "var(--font-instrument-serif)",
+          "Georgia",
+          "serif",
+        ],
         sans: [
-          "var(--font-geist-sans)",
-          "var(--font-inter)",
+          "var(--font-inter-tight)",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",
           "sans-serif",
         ],
         mono: [
-          "var(--font-geist-mono)",
           "var(--font-jetbrains-mono)",
           "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
           "monospace",
         ],
       },
       transitionDuration: {
         standard: "150ms",
       },
-      keyframes: {
-        "accordion-down": {
-          from: { height: "0" },
-          to: { height: "var(--radix-accordion-content-height)" },
-        },
-        "accordion-up": {
-          from: { height: "var(--radix-accordion-content-height)" },
-          to: { height: "0" },
-        },
-      },
-      animation: {
-        "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out",
-      },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 };
 
 export default config;

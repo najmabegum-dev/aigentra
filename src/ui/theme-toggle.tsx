@@ -40,12 +40,12 @@ export function ThemeToggle() {
       type="button"
       onClick={toggleTheme}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted border border-border transition-colors duration-150 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-primary"
+      className="p-1.5 rounded-[4px] text-text-dim hover:text-text hover:bg-surface-2 border border-line transition-colors duration-150 flex items-center justify-center focus:outline-none focus:ring-1 focus:ring-signal cursor-pointer"
     >
       {isDark ? (
-        <Sun className="w-4 h-4 text-amber-400" />
+        <Sun className="w-4 h-4 text-text" strokeWidth={1.25} />
       ) : (
-        <Moon className="w-4 h-4 text-slate-400" />
+        <Moon className="w-4 h-4 text-text" strokeWidth={1.25} />
       )}
     </button>
   );

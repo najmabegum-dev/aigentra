@@ -10,13 +10,13 @@ export function PersistentBanners({ paymentMode = "dev_stub" }: PersistentBanner
     <header
       role="region"
       aria-label="Sandbox Environment Status Bar"
-      className="h-8 w-full border-b border-border/80 bg-surface/90 text-xs px-3 sm:px-4 flex items-center justify-between z-50 select-none backdrop-blur-sm"
+      className="h-8 w-full border-b border-line bg-surface text-xs px-3 sm:px-4 flex items-center justify-between z-50 select-none"
     >
-      {/* Left side: Environment pills */}
+      {/* Left side: Environment pills (real status) */}
       <div className="flex items-center gap-2">
         {/* Sandbox Pill */}
-        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-semibold tracking-wider uppercase bg-purple-950/70 text-purple-300 border border-purple-800/60 shadow-sm">
-          <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-approval/10 text-approval border border-approval/30">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-approval animate-pulse" />
           <span>SANDBOX</span>
         </span>
 
@@ -25,23 +25,23 @@ export function PersistentBanners({ paymentMode = "dev_stub" }: PersistentBanner
           <span
             role="alert"
             aria-label="Development Stub Mode Warning"
-            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10.5px] font-bold tracking-wider uppercase bg-rose-950/80 text-rose-300 border border-rose-700/70 shadow-sm"
+            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold tracking-wider uppercase bg-deny/10 text-deny border border-deny/30"
           >
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-rose-400" />
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-deny" />
             <span>DEV STUB</span>
           </span>
         )}
 
         {/* Clarifying label on medium+ screens */}
-        <span className="hidden md:inline text-[11px] text-muted-foreground/80 pl-1">
+        <span className="hidden md:inline text-[11px] font-mono text-text-dim pl-1">
           Settlement Stand-In Only · No Real Funds Moved
         </span>
       </div>
 
       {/* Right side: Security badge indicator */}
-      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-        <span className="hidden sm:flex items-center gap-1 font-mono text-[10.5px] text-muted-foreground/80">
-          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+      <div className="flex items-center gap-2 text-[11px] font-mono text-text-dim">
+        <span className="hidden sm:flex items-center gap-1.5 text-[11px] text-text-dim">
+          <ShieldCheck className="w-3.5 h-3.5 text-allow" strokeWidth={1.25} />
           <span>AUTHORITY GATEWAY</span>
         </span>
       </div>
