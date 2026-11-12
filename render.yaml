@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: aigentra
+    runtime: node
+    plan: standard
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PAYMENT_MODE
+        value: paypal
+      - key: AI_PROVIDER
+        value: gemini
+      - key: GEMINI_MODEL_ID
+        value: gemini-2.0-flash
+      - key: DATABASE_URL
+        fromDatabase:
+          name: aigentra-db
+          property: connectionString
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false
+      - key: MANDATE_SIGNING_PRIVATE_KEY
+        sync: false
+      - key: MANDATE_SIGNING_PUBLIC_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CHANNEL3_API_KEY
+        sync: false
+
+databases:
+  - name: aigentra-db
+    databaseName: aigentra
+    user: aigentra_user
+    plan: free
