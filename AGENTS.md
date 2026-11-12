@@ -103,17 +103,16 @@ These apply from now on. Do not rewrite existing history.
 ### Next
 - <what comes next>
 ```
-
-### Commit flow for every unit of work
+### Commit Flow for every unit of work
 1. Make the change. If it touches `authorize`, `execute` or `verify`, get plan approval first.
 2. Run lint, typecheck and tests. Fix failures.
 3. Update `docs/PROGRESS.md`.
 4. Stage files explicitly and review `git diff --staged` for secrets.
-5. Commit with the format above and push.
+5. Ensure you are on the `main` branch (`git checkout main`), commit with the format above, and push directly to `main`. Do not create new feature branches.
 
-### Security and history
-- Never commit secrets, keys, tokens or `.env` files. Only `.env.example` with placeholder values is allowed. This is the one exception to "never edit `.env*` files", and the agent may add placeholder names there but never real values.
-- If a secret is ever committed, stop and tell me immediately so the key can be rotated. Do not just delete it in a later commit.
-- Never force-push to `main` or rewrite shared history.
-- Do not commit `node_modules`, build output or generated files.
-- Keep `README.md` current: description, tech stack, setup, env var names, how to run and test.
+### Security and Hygiene
+- Never touch, create, edit, delete or `.env*` files. Only `.env.example` with placeholder values is allowed. This is the one exception to "never edit `.env*` files", and the agent may not read/echo `.env*` files into tool output.
+- If a secret is ever exposed, stop and tell me immediately so the key can be rotated. Do not save secrets to chat logs/memory.
+- Commit directly to `main` for standard work, but never force-push (`git push --force`) or rewrite shared history.
+- Do not commit temp scripts, build output or generated files.
+- Keep `README.md` accurate (architecture, directory setup, env var names, how to run and test).
