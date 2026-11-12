@@ -9,7 +9,6 @@ import {
   getMandatePublicKeyPem,
   _resetCachedKeyPairForTesting,
 } from "@/rooms/authorize/mandates";
-import { MandateGrant } from "@/rooms/authorize/types";
 
 describe("Production Mandate Key Enforcement (F3)", () => {
   const originalEnv = { ...process.env };
@@ -27,22 +26,71 @@ describe("Production Mandate Key Enforcement (F3)", () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
     delete process.env.MANDATE_SIGNING_PRIVATE_KEY;
     delete process.env.MANDATE_SIGNING_PUBLIC_KEY;
-    delete process.env.MANDATE_SIGNING_KEY_PEM;
-    delete process.env.MANDATE_PUBLIC_KEY_PEM;
 
     await expect(getMandatePublicKeyPem()).rejects.toThrow(
       /Mandate signing keys \(MANDATE_SIGNING_PRIVATE_KEY and MANDATE_SIGNING_PUBLIC_KEY\) are missing in production/
     );
   });
 
-  it("fails in production when mandate keys are corrupt or invalid", async () => {
+  it("fails in production when MANDATE_SIGNING_PRIVATE_KEY is missing even if public key is present", async () => {
     (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+    delete process.env.MANDATE_SIGNING_PRIVATE_KEY;
+    process.env.MANDATE_SIGNING_PUBLIC_KEY = "-----BEGIN PUBLIC KEY-----\nMOCK\n-----END PUBLIC KEY-----";
+
+    await expect(getMandatePublicKeyPem()).rejects.toThrow(
+      /Mandate signing keys \(MANDATE_SIGNING_PRIVATE_KEY and MANDATE_SIGNING_PUBLIC_KEY\) are missing in production/
+    );
+  });
+
+  it("fails in production when MANDATE_SIGNING_PUBLIC_KEY is missing even if private key is present", async () => {
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+    process.env.MANDATE_SIGNING_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\nMOCK\n-----END PRIVATE KEY-----";
+    delete process.env.MANDATE_SIGNING_PUBLIC_KEY;
+
+    await expect(getMandatePublicKeyPem()).rejects.toThrow(
+      /Mandate signing keys \(MANDATE_SIGNING_PRIVATE_KEY and MANDATE_SIGNING_PUBLIC_KEY\) are missing in production/
+    );
+  });
+
+  it("fails in production when mandate keys are corrupt or invalid and does not leak key values in error", async () => {
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
+    const secretPrivateMarker = "SUPER_SECRET_PRIVATE_KEY_DATA_DO_NOT_LEAK";
+    const secretPublicMarker = "SUPER_SECRET_PUBLIC_KEY_DATA_DO_NOT_LEAK";
+    process.env.MANDATE_SIGNING_PRIVATE_KEY = secretPrivateMarker;
+    process.env.MANDATE_SIGNING_PUBLIC_KEY = secretPublicMarker;
+
+    let thrownError: Error | null = null;
+    try {
+      await getMandatePublicKeyPem();
+    } catch (err: any) {
+      thrownError = err;
+    }
+
+    expect(thrownError).not.toBeNull();
+    expect(thrownError!.message).toMatch(
+      /Mandate signing keys \(MANDATE_SIGNING_PRIVATE_KEY \/ MANDATE_SIGNING_PUBLIC_KEY\) are invalid in production/
+    );
+    // Golden Rule 10: Secrets never leave the server or leak into error logs
+    expect(thrownError!.message).not.toContain(secretPrivateMarker);
+    expect(thrownError!.message).not.toContain(secretPublicMarker);
+  });
+
+  it("falls back to ephemeral key in non-production when keys are missing", async () => {
+    (process.env as Record<string, string | undefined>).NODE_ENV = "test";
+    delete process.env.MANDATE_SIGNING_PRIVATE_KEY;
+    delete process.env.MANDATE_SIGNING_PUBLIC_KEY;
+
+    const pem = await getMandatePublicKeyPem();
+    expect(pem).toContain("BEGIN PUBLIC KEY");
+  });
+
+  it("falls back to ephemeral key in non-production when keys are invalid", async () => {
+    (process.env as Record<string, string | undefined>).NODE_ENV = "development";
     process.env.MANDATE_SIGNING_PRIVATE_KEY = "corrupted_invalid_private_key";
     process.env.MANDATE_SIGNING_PUBLIC_KEY = "corrupted_invalid_public_key";
 
-    await expect(getMandatePublicKeyPem()).rejects.toThrow(
-      /Mandate signing keys \(MANDATE_SIGNING_PRIVATE_KEY \/ MANDATE_SIGNING_PUBLIC_KEY\) are invalid in production/
-    );
+    const pem = await getMandatePublicKeyPem();
+    expect(pem).toContain("BEGIN PUBLIC KEY");
   });
 
   it("succeeds in production when valid single-line escaped keys are provided", async () => {
